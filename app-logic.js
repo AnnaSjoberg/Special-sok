@@ -207,7 +207,7 @@ function displaySessions(sessions, filters) {
     if (showMore) {
       const showMoreCell = document.createElement("td");
       const showMoreButton = document.createElement("button");
-      showMoreButton.textContent = "Show More";
+      showMoreButton.textContent = "Visa mer";
       showMoreButton.classList.add('btn', 'btn-sm', 'btn-info','show-more-button');
       showMoreButton.addEventListener("click", () => {
         populateModal(session);
@@ -301,7 +301,7 @@ async function createDropdown(db, category, sessionForm) {
     const addButton = document.createElement("button");
     addButton.classList.add('btn', 'btn-warning', 'btn-sm');
     addButton.type='button';
-    addButton.textContent = "Add New";
+    addButton.textContent = "Lägg till alternativ";
     addButton.addEventListener("click", () => {
       showAddNewInput(db, category);
     });
@@ -353,7 +353,7 @@ async function showAddNewInput(db, category) {
 
   const saveButton = document.createElement("button");
   saveButton.classList.add('btn', 'btn-danger', 'btn-sm');
-  saveButton.textContent = "Save";
+  saveButton.textContent = "Spara";
 
   inputContainer.appendChild(inputField);
   inputContainer.appendChild(saveButton);
@@ -405,7 +405,7 @@ async function validateSessionForm(db, categories) {
 
     await addSessionToDB(db, formData);
 
-    confirmation.textContent = "Session saved successfully!";
+    confirmation.textContent = "Träningspass sparat!";
 
     // Reset the input fields within the container
     const sessionForm = document.querySelector("#session-form");
