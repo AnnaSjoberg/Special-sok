@@ -1,34 +1,42 @@
 // database.js
 function openDatabase() {
   const DB_NAME = "DogTrainingDB";
-  const DB_VERSION = 10;
+  const DB_VERSION = 11;
   const categoryNames = [
-    "dog",
-    "environment",
-    "area",
-    "height",
-    "kongs_hidden",
-    "kongs_found",
-    "distractions",
-    "notes",
-    "date",
+    "01_date",
+    "02_dog",
+    "03_environment",
+    "04_area",
+    "05_height",
+    "06_distractions",
+    "07_kongs_hidden",
+    "08_kongs_found",
+    "09_notes",
   ]; // Add more category names
   const initialOptions = {
-    environment: [
+    "01_date": [], // Add options for date
+    "02_dog": [], // Add options for dog
+    "03_environment": [
       { value: "Skog" },
       { value: "Park" },
       { value: "Stad" },
       { value: "Möblerat rum" },
       { value: "Uthusbyggnad" },
     ],
-    area: [{ value: "0-10 m2" }, { value: "10-20 m2" }],
-    height: [
+    "04_area": [{ value: "0-10 m2" }, { value: "10-20 m2" }],
+    "05_height": [
       { value: "Hunden når från marken" },
       { value: "Hunden kan själv klättra" },
       { value: "Hunden behöver hjälp" },
     ],
+    "06_distractions" : [],
+    "07_kongs_hidden" : [],
+    "08_kongs_found" : [],
+    "09_notes" : [],
+
     // ... other categories
   };
+  
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
 
@@ -63,11 +71,14 @@ function openDatabase() {
         keyPath: "id",
         autoIncrement: true,
       });
-      // Add the categories as properties to the object store
-      categoryNames.forEach((categoryName) => {
-        const keyPath = categoryName.replace(/ /g, '_'); // Replace spaces with underscores
-        sessionStore.createIndex(keyPath, keyPath, { unique: false });
-      });
+      // Modify category names to remove numeric prefixes
+const keyPaths = categoryNames.map((category) => category.replace(/^\d+_/g, ''));
+
+// Use the modified key paths in the createIndex method
+keyPaths.forEach((keyPath) => {
+  sessionStore.createIndex(keyPath, keyPath, { unique: false });
+});
+
     };
 
     request.onsuccess = function (event) {
@@ -155,204 +166,6 @@ async function getSessionsByFilters(db, filters) {
     return filteredSessions;
   }
   
-/*
-async function getSessionsByFilters(db, filters) {
-    const sessions = []; // Array to store fetched sessions
-  
-    // Open a transaction and access the sessions store
-    const transaction = db.transaction("sessions", "readonly");
-    const store = transaction.objectStore("sessions");
-  
-    // Loop through filters in the array
-    for (const filter of filters) {
-      const category = filter.category;
-      const option = filter.option;
-      const index = store.index(category);
-  
-      const range = IDBKeyRange.only(option);
-      const cursorRequest = index.openCursor(range);
-  
-      cursorRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          sessions.push(cursor.value);
-          cursor.continue();
-        }
-      };
-    }
- console.log(sessions.length);
-    return sessions;
-  }
- 
-  async function getSessionsByFilters(db, filters) {
-    const transaction = db.transaction("sessions", "readonly");
-    const store = transaction.objectStore("sessions");
-    
-    let sessions=[];
-    // Create an initial range that includes all sessions
-    let range = IDBKeyRange.lowerBound(0);
-  
-    // Apply filters one by one
-    for (const filter of filters) {
-      const category = filter.category;
-      const option = filter.option;
-      const index = store.index(category);
-      console.log('inside filter of Filters')
-      // Update the range with the new filter
-      range = IDBKeyRange.bound(option, option);
-  
-      // Open a cursor for the updated range
-      const cursorRequest = index.openCursor(range);
-      
-      const filteredSessions = [];
-      
-      cursorRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          filteredSessions.push(cursor.value);
-          cursor.continue();
-        }
-      };
-      
-      // Wait for the cursor request to complete
-      await new Promise((resolve) => {
-        cursorRequest.onsuccess = (event) => {
-          resolve();
-        };
-      });
-      
-      // Update sessions with the filtered results
-      console.log(filteredSessions.length +'filtered');
-      sessions = filteredSessions;
-    }
-    
-    console.log(sessions.length +'sessions');
-    return sessions;
-  }
-   
-  async function getSessionsByFilters(db, filters) {
-    const transaction = db.transaction("sessions", "readonly");
-    const store = transaction.objectStore("sessions");
-  
-    let sessions = []; // Initialize an empty array to store fetched sessions
-  
-    // Check if any filters are present
-    if (filters.length === 0) {
-      const cursorRequest = store.openCursor();
-  
-      cursorRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          sessions.push(cursor.value);
-          cursor.continue();
-        }
-      };
-  
-      // Wait for the cursor request to complete
-      await new Promise((resolve) => {
-        cursorRequest.onsuccess = (event) => {
-          resolve();
-        };
-      });
-    } else {
-      // Apply filters one by one
-      for (const filter of filters) {
-        const category = filter.category;
-        const option = filter.option;
-        const index = store.index(category);
-  
-        // Create an initial range that includes all sessions
-        let range = IDBKeyRange.lowerBound(0);
-  
-        // Update the range with the new filter
-        range = IDBKeyRange.bound(option, option);
-  
-        // Open a cursor for the updated range
-        const cursorRequest = index.openCursor(range);
-  
-        const filteredSessions = [];
-  
-        cursorRequest.onsuccess = (event) => {
-          const cursor = event.target.result;
-          if (cursor) {
-            filteredSessions.push(cursor.value);
-            cursor.continue();
-          }
-        };
-  
-        // Wait for the cursor request to complete
-        await new Promise((resolve) => {
-          cursorRequest.onsuccess = (event) => {
-            resolve();
-          };
-        });
-  
-        // Merge the filteredSessions into the sessions array
-        sessions = sessions.concat(filteredSessions);
-      }
-    }
-  
-    console.log(sessions.length);
-    return sessions;
-  }
- 
-  async function getSessionsByFilters(db, filters) {
-    const transaction = db.transaction("sessions", "readonly");
-    const store = transaction.objectStore("sessions");
-  
-    let sessions = [];
-  
-    // Check if any filters are present
-    if (filters.length === 0) {
-      const cursorRequest = store.openCursor();
-  
-      cursorRequest.onsuccess = (event) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          sessions.push(cursor.value);
-          cursor.continue();
-        }
-      };
-  
-      // Wait for the cursor request to complete
-      await new Promise((resolve) => {
-        cursorRequest.onsuccess = (event) => {
-          resolve();
-        };
-      });
-    } else {
-      // Apply filters one by one
-      for (const filter of filters) {
-        const category = filter.category;
-        const option = filter.option;
-        const index = store.index(category);
-  
-        const range = IDBKeyRange.only(option);
-  
-        // Open a cursor for the range
-        const cursorRequest = index.openCursor(range);
-  
-        await new Promise((resolve) => {
-          cursorRequest.onsuccess = (event) => {
-            const cursor = event.target.result;
-            if (cursor) {
-              sessions.push(cursor.value);
-              cursor.continue();
-            } else {
-              resolve(); // Resolve the Promise when the cursor is done
-            }
-          };
-        });
-      }
-    }
-  
-    console.log(sessions.length);
-    return sessions;
-  }
-  */
-
-
-
 async function fetchOptions(db, categoryName) {
   return new Promise((resolve, reject) => {
     const transaction = db.transaction(categoryName, "readonly");
