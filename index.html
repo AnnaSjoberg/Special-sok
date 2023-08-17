@@ -28,6 +28,16 @@
     </nav>
     <section id="loggingSection">
       <!-- Logging form and elements go here -->
+      
+      <div id="objectModal" class="modal">
+        <div class="modal-content">
+          <span class="close">&times;</span>
+          <label for="num-objects">Antal gömmor: </label>
+          <input type="number" id="num-objects-modal" min="1" value="1">
+          <button id="submit-num-objects">Submit</button>
+        </div>
+      </div>
+      
       <div class="container">
         <h1>Registrera ett träningspass</h1>
         <div class="log-form container">
@@ -51,7 +61,7 @@
         </div>
       </div>
 
-      <div class="modal  modal-dialog-scrollable">
+      <div class="modal  modal-dialog-scrollable" id="viewModal">
         <div class="modal-content">
           <div class="modal-header  bg-light">
             <h4 class="modal-title"></h4>

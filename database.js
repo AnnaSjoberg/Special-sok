@@ -1,7 +1,7 @@
 // database.js
 function openDatabase() {
   const DB_NAME = "DogTrainingDB";
-  const DB_VERSION = 11;
+  const DB_VERSION = 12;
   const sessionAttributes = [
     "01_date",
     "02_dog",
@@ -164,8 +164,8 @@ function openDatabase() {
 
 async function fetchCategories(db, objectStoreName) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(objectStoreName + "Attributes", "readonly");
-    const objectAttributesStore = transaction.objectStore(objectStoreName + "Attributes");
+    const transaction = db.transaction(objectStoreName, "readonly");
+    const objectAttributesStore = transaction.objectStore(objectStoreName);
     const getRequest = objectAttributesStore.getAll();
 
     getRequest.onsuccess = function (event) {
@@ -181,15 +181,14 @@ async function fetchCategories(db, objectStoreName) {
 }
 
 
-async function fetchOptions(db, objectStoreName, attributeName) {
+async function fetchOptions(db, attribute) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(objectStoreName, "readonly");
-    const objectStore = transaction.objectStore(objectStoreName);
+    const transaction = db.transaction(attribute, "readonly");
+    const objectStore = transaction.objectStore(attribute);
     const getRequest = objectStore.getAll();
 
     getRequest.onsuccess = function (event) {
-      const options = event.target.result.map((entry) => entry[attributeName]);
-
+      const options = event.target.result.map((entry) => entry.value);
       resolve(options);
     };
 
@@ -198,6 +197,7 @@ async function fetchOptions(db, objectStoreName, attributeName) {
     };
   });
 }
+
 
 async function addSessionToDB(db, session, objects, distractions) {
   return new Promise((resolve, reject) => {

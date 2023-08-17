@@ -9,7 +9,6 @@ document.addEventListener("DOMContentLoaded", async function () {
   const viewingSection = document.getElementById("viewingSection");
   const logConfirmationContainer = document.querySelector(".log-confirmation");
   const sessionForm = document.getElementById("session-form");
- 
 
   logLink.addEventListener("click", function () {
     loggingSection.style.display = "block";
@@ -26,61 +25,99 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializeView(db);
   });
 });
+
 async function initializeLog(db) {
   try {
-    // Fetch sessionCategories from the database
-    const sessionCategories = await fetchCategories(db);
-    
-    const logFormContainer = document.querySelector(".log-form"); // Use the correct selector for your container
-    const logConfirmationContainer =
-      document.querySelector(".log-confirmation");
-    const sessionForm = document.querySelector("#session-form");
-    const dropdownPromises = [];
+    // Show the modal
+    const modal = document.getElementById("objectModal");
+    const submitButton = document.getElementById("submit-num-objects");
+    const numObjectsInput = document.getElementById("num-objects-modal");
 
-    clearContainer(logConfirmationContainer);
+    modal.style.display = "block";
 
-    // Loop through categories and create dropdowns
-    sessionCategories.forEach(async (category) => {
-      await createDropdown(db, category, sessionForm);
-    });
+    // Handle the submit button
+    submitButton.addEventListener("click", async () => {
+      const numObjectsValue = parseInt(numObjectsInput.value, 10) || 1;
 
-    // Wait for all dropdowns to be created before appending the button
-    Promise.all(dropdownPromises).then((dropdowns) => {
-      dropdowns.forEach((dropdown) => {
-        logFormContainer.appendChild(dropdown);
-      });
-      const buttonDiv = document.createElement('div');
-      buttonDiv.className = 'button-div';
-      const saveSessionButton = document.createElement("button");
-      saveSessionButton.classList.add("btn", "btn-success", "log-save");
-      
-      saveSessionButton.textContent = "Spara träningspass";
-      saveSessionButton.addEventListener("click", () =>
-      validateSessionForm(db, sessionCategories)
+      // Close the modal
+      modal.style.display = "none";
+
+      // Fetch sessionCategories from the database
+      const sessionCategories = await fetchCategories(db, "sessionAttributes");
+      const objectCategories = await fetchCategories(db, "objectAttributes");
+      const distractionCategories = await fetchCategories(
+        db,
+        "distractionAttributes"
       );
-      const clearButton = document.createElement('button');
-      clearButton.classList.add('btn', 'btn-secondary', 'log-clear');
-      clearButton.textContent = 'Rensa formulär';
-      clearButton.addEventListener('click', () => { 
-        // Reset the input fields within the container
-    sessionForm.reset();
-    clearContainer(logConfirmationContainer);
+
+      const logFormContainer = document.querySelector(".log-form"); // Use the correct selector for your container
+      const logConfirmationContainer =
+        document.querySelector(".log-confirmation");
+      const sessionForm = document.querySelector("#session-form");
+      const dropdownPromises = [];
+
+      clearContainer(logConfirmationContainer);
+
+      let noteCategory;
+      sessionCategories.forEach(async (category) => {
+        if (category.includes("notes")) {
+          noteCategory = category;
+        } else {
+          await createDropdown(db, category, sessionForm);
+        }
       });
-      
-      buttonDiv.appendChild(saveSessionButton);
-      buttonDiv.appendChild(clearButton);
-      
-      logFormContainer.appendChild(buttonDiv);
-      logFormContainer.appendChild(logConfirmationContainer);
-    });   
+
+      const objectDiv = document.createElement("div");
+      objectDiv.className = "object-div";
+
+      for (let i = 0; i < numObjectsValue; i++) {
+        const indObjectDiv = createObjectDiv(db, objectCategories, i);
+        objectDiv.appendChild(indObjectDiv);
+      }
+      logFormContainer.appendChild(objectDiv);
+
+      if (noteCategory) {
+        await createDropdown(db, noteCategory, sessionForm);
+      }
+
+      // Wait for all dropdowns to be created before appending the button
+      Promise.all(dropdownPromises).then((dropdowns) => {
+        dropdowns.forEach((dropdown) => {
+          logFormContainer.appendChild(dropdown);
+        });
+        const buttonDiv = document.createElement("div");
+        buttonDiv.className = "button-div";
+        const saveSessionButton = document.createElement("button");
+        saveSessionButton.classList.add("btn", "btn-success", "log-save");
+
+        saveSessionButton.textContent = "Spara träningspass";
+        saveSessionButton.addEventListener("click", () =>
+          validateSessionForm(db, sessionCategories)
+        );
+        const clearButton = document.createElement("button");
+        clearButton.classList.add("btn", "btn-secondary", "log-clear");
+        clearButton.textContent = "Rensa formulär";
+        clearButton.addEventListener("click", () => {
+          // Reset the input fields within the container
+          sessionForm.reset();
+          clearContainer(logConfirmationContainer);
+        });
+
+        buttonDiv.appendChild(saveSessionButton);
+        buttonDiv.appendChild(clearButton);
+
+        logFormContainer.appendChild(buttonDiv);
+        logFormContainer.appendChild(logConfirmationContainer);
+      });
+    });
   } catch (error) {
     console.error("Error initializing dropdown menus", error);
   }
 }
+
 async function initializeView(db) {
   try {
     const categories = await fetchCategories(db);
-    
 
     const filterContainer = document.querySelector(".filter-container");
     const displayContainer = document.querySelector(".view-sessions");
@@ -120,7 +157,6 @@ async function initializeView(db) {
           `Filter ${index}: Category: ${filter.category}, Option: ${filter.option}`
         );
       });
-     
 
       fetchAndDisplayFilteredSessions(db, filters);
     });
@@ -135,7 +171,9 @@ async function collectFilters(categories) {
 
   dropdowns.forEach((dropdown) => {
     const dropdownId = dropdown.id;
-    const category = String(categories.find(cat => dropdownId === removePrefix(cat))); // Map dropdown.id to corresponding category
+    const category = String(
+      categories.find((cat) => dropdownId === removePrefix(cat))
+    ); // Map dropdown.id to corresponding category
     const selectedOption = dropdown.value;
 
     if (selectedOption) {
@@ -193,7 +231,6 @@ function displaySessions(sessions, filters) {
       availableCategories.add(category);
       noOfFilters++;
       console.log(category);
-
     }
   }
   let showMore = true;
@@ -279,14 +316,13 @@ function populateModal(session) {
     modal.style.display = "none";
   });
 }
-function removePrefix(category){
-  return String(category).substring(String(category).search(/_/)+1);
+function removePrefix(category) {
+  return String(category).substring(String(category).search(/_/) + 1);
 }
-
 
 function beautifyLabel(category) {
   let string = removePrefix(category);
- string= string.replace(/_/g, " ") + ":";
+  string = string.replace(/_/g, " ") + ":";
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 
@@ -326,17 +362,51 @@ async function createDropdown(db, category, sessionForm) {
 
     initializeDropdownOptions(db, logDropdown, category);
 
-    const addButton = document.createElement("button");
-    addButton.classList.add("btn", "btn-warning", "btn-sm");
-    addButton.type = "button";
-    addButton.textContent = "Lägg till nytt";
-    addButton.addEventListener("click", () => {
-      showAddNewInput(db, category);
-    });
+    const addButton = createAddNewButton(db, category);
     categoryContainer.appendChild(logDropdown);
     categoryContainer.appendChild(addButton);
   }
   sessionForm.appendChild(categoryContainer);
+}
+function createObjectDiv(db, objectCategories, index) {
+  // Create a div for an object and initialize the dropdowns
+  const indObjectDiv = document.createElement("div");
+  indObjectDiv.className = "ind-object-container";
+
+  const label = document.createElement("label");
+  label.textContent = `Object ${index}`;
+  indObjectDiv.appendChild(label);
+
+  objectCategories.forEach((objectCategory) => {
+    const catString = removePrefix(objectCategory);
+    const indCatDiv = document.createElement("div");
+    const label = document.createElement("label");
+    label.textContent = beautifyLabel(objectCategory);
+    const objectDropdown = document.createElement("select");
+    objectDropdown.id = catString + index;
+    indCatDiv.appendChild(label);
+    indCatDiv.appendChild(objectDropdown);
+
+    initializeDropdownOptions(db, objectDropdown, objectCategory);
+
+    const addButton = createAddNewButton(db, objectCategory);
+    indCatDiv.appendChild(addButton);
+    indObjectDiv.appendChild(indCatDiv);
+  });
+
+  return indObjectDiv;
+}
+function createAddNewButton(db, category) {
+  const addButton = document.createElement("button");
+  addButton.classList.add("btn", "btn-warning", "btn-sm");
+  addButton.type = "button";
+  addButton.textContent = "Lägg till nytt";
+
+  addButton.addEventListener("click", () => {
+    showAddNewInput(db, category);
+  });
+
+  return addButton;
 }
 
 async function initializeDropdownOptions(db, dropdown, category) {
@@ -381,13 +451,12 @@ async function showAddNewInput(db, category) {
   inputField.placeholder = "Skriv in nytt alternativ";
 
   const saveButton = document.createElement("button");
-  saveButton.type='button';
+  saveButton.type = "button";
   saveButton.classList.add("btn", "btn-danger", "btn-sm");
   saveButton.textContent = "Spara";
 
   inputContainer.appendChild(inputField);
   inputContainer.appendChild(saveButton);
-  
 
   const categoryContainer = document.querySelector(`.${catString}Container`);
   categoryContainer.appendChild(inputContainer);
@@ -438,7 +507,6 @@ async function validateSessionForm(db, categories) {
     await addSessionToDB(db, formData);
 
     confirmation.textContent = "Träningspass sparat!";
- 
   } catch (error) {
     console.error("Error saving session:", error);
     const errorDiv = document.createElement("div");
