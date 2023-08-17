@@ -9,13 +9,13 @@ document.addEventListener("DOMContentLoaded", async function () {
   const viewingSection = document.getElementById("viewingSection");
   const logConfirmationContainer = document.querySelector(".log-confirmation");
   const sessionForm = document.getElementById("session-form");
-  const inputContainer = document.querySelector(".input-container");
+ 
 
   logLink.addEventListener("click", function () {
     loggingSection.style.display = "block";
     viewingSection.style.display = "none";
     clearContainer(logConfirmationContainer);
-    clearContainer(inputContainer);
+    sessionForm.reset();
   });
   initializeLog(db);
 
@@ -49,17 +49,30 @@ async function initializeLog(db) {
       dropdowns.forEach((dropdown) => {
         logFormContainer.appendChild(dropdown);
       });
-
+      const buttonDiv = document.createElement('div');
+      buttonDiv.className = 'button-div';
       const saveSessionButton = document.createElement("button");
-      saveSessionButton.classList.add("btn", "btn-success");
-
+      saveSessionButton.classList.add("btn", "btn-success", "log-save");
+      
       saveSessionButton.textContent = "Spara träningspass";
       saveSessionButton.addEventListener("click", () =>
-        validateSessionForm(db, categories)
+      validateSessionForm(db, categories)
       );
-      logFormContainer.appendChild(saveSessionButton);
+      const clearButton = document.createElement('button');
+      clearButton.classList.add('btn', 'btn-secondary', 'log-clear');
+      clearButton.textContent = 'Rensa formulär';
+      clearButton.addEventListener('click', () => { 
+        // Reset the input fields within the container
+    sessionForm.reset();
+    clearContainer(logConfirmationContainer);
+      });
+      
+      buttonDiv.appendChild(saveSessionButton);
+      buttonDiv.appendChild(clearButton);
+      
+      logFormContainer.appendChild(buttonDiv);
       logFormContainer.appendChild(logConfirmationContainer);
-    });
+    });   
   } catch (error) {
     console.error("Error initializing dropdown menus", error);
   }
@@ -425,10 +438,11 @@ async function validateSessionForm(db, categories) {
     await addSessionToDB(db, formData);
 
     confirmation.textContent = "Träningspass sparat!";
-
+/*
     // Reset the input fields within the container
     const sessionForm = document.querySelector("#session-form");
     sessionForm.reset();
+  */  
   } catch (error) {
     console.error("Error saving session:", error);
     const errorDiv = document.createElement("div");
