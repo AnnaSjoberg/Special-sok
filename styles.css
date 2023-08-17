@@ -124,4 +124,11 @@
         width: 100%; /* Use full width on smaller screens */
     }
 }
+.footer {
+  padding: 20px; /* Add padding to create distance between outer edges */
+  
+}
 
+.footer-text {
+  margin: 10px 0; /* Add margin to create space above and below each <p> element */
+}
