@@ -28,8 +28,8 @@ document.addEventListener("DOMContentLoaded", async function () {
 });
 async function initializeLog(db) {
   try {
-    // Fetch categories from the database
-    const categories = await fetchCategories(db);
+    // Fetch sessionCategories from the database
+    const sessionCategories = await fetchCategories(db);
     
     const logFormContainer = document.querySelector(".log-form"); // Use the correct selector for your container
     const logConfirmationContainer =
@@ -40,7 +40,7 @@ async function initializeLog(db) {
     clearContainer(logConfirmationContainer);
 
     // Loop through categories and create dropdowns
-    categories.forEach(async (category) => {
+    sessionCategories.forEach(async (category) => {
       await createDropdown(db, category, sessionForm);
     });
 
@@ -56,7 +56,7 @@ async function initializeLog(db) {
       
       saveSessionButton.textContent = "Spara träningspass";
       saveSessionButton.addEventListener("click", () =>
-      validateSessionForm(db, categories)
+      validateSessionForm(db, sessionCategories)
       );
       const clearButton = document.createElement('button');
       clearButton.classList.add('btn', 'btn-secondary', 'log-clear');
@@ -438,11 +438,7 @@ async function validateSessionForm(db, categories) {
     await addSessionToDB(db, formData);
 
     confirmation.textContent = "Träningspass sparat!";
-/*
-    // Reset the input fields within the container
-    const sessionForm = document.querySelector("#session-form");
-    sessionForm.reset();
-  */  
+ 
   } catch (error) {
     console.error("Error saving session:", error);
     const errorDiv = document.createElement("div");
