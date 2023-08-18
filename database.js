@@ -276,18 +276,19 @@ async function getSessionsByFilters(db, filters) {
 }
 
 
-async function saveNewOptionToDatabase(sessionAttribute, option) {
+async function saveNewOptionToDatabase(attribute, option) {
   // Save the new option to the database
   try {
+
     const db = await openDatabase(); // Open the database
-    const transaction = db.transaction("sessionAttribute", "readwrite");
-    const sessionAttributeStore = transaction.objectStore(sessionAttribute);
+    const transaction = db.transaction(attribute, "readwrite");
+    const attributeStore = transaction.objectStore(attribute);
 
     // Create an object with the option value
     const optionObject = { value: option };
 
     // Add the option to the category's object store
-    const request = sessionAttributeStore.add(optionObject);
+    const request = attributeStore.add(optionObject);
 
     return new Promise((resolve, reject) => {
       request.onsuccess = function (event) {
@@ -299,7 +300,7 @@ async function saveNewOptionToDatabase(sessionAttribute, option) {
       };
     });
   } catch (error) {
-    console.error("Error adding option to category", error);
+    console.error("Error adding option to attribute", error);
     throw error;
   }
 }

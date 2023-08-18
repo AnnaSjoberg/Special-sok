@@ -362,7 +362,7 @@ async function createDropdown(db, category, sessionForm) {
 
     initializeDropdownOptions(db, logDropdown, category);
 
-    const addButton = createAddNewButton(db, category);
+    const addButton = createAddNewButton(db, category, logDropdown, categoryContainer);
     categoryContainer.appendChild(logDropdown);
     categoryContainer.appendChild(addButton);
   }
@@ -389,21 +389,22 @@ function createObjectDiv(db, objectCategories, index) {
 
     initializeDropdownOptions(db, objectDropdown, objectCategory);
 
-    const addButton = createAddNewButton(db, objectCategory);
+    const addButton = createAddNewButton(db, objectCategory, objectDropdown, indCatDiv);
     indCatDiv.appendChild(addButton);
     indObjectDiv.appendChild(indCatDiv);
   });
 
   return indObjectDiv;
 }
-function createAddNewButton(db, category) {
+function createAddNewButton(db, category, categoryDropdown, categoryContainer) {
+  
   const addButton = document.createElement("button");
   addButton.classList.add("btn", "btn-warning", "btn-sm");
   addButton.type = "button";
   addButton.textContent = "Lägg till nytt";
 
   addButton.addEventListener("click", () => {
-    showAddNewInput(db, category);
+    showAddNewInput(db, category, categoryDropdown, categoryContainer);
   });
 
   return addButton;
@@ -431,10 +432,10 @@ async function initializeDropdownOptions(db, dropdown, category) {
     console.error("Error initializing dropdown options", error);
   }
 }
-async function showAddNewInput(db, category) {
+async function showAddNewInput(db, category, categoryDropdown, categoryContainer) {
   const catString = removePrefix(category);
-  const categoryDropdown = document.querySelector(`#${catString}`);
-
+  //const categoryDropdown = document.querySelector(`#${catString}`);
+  //console.log(category);
   // Clear the old input container if it exists
   const oldInputContainer = document.querySelector(".input-container");
   if (oldInputContainer) {
@@ -458,7 +459,7 @@ async function showAddNewInput(db, category) {
   inputContainer.appendChild(inputField);
   inputContainer.appendChild(saveButton);
 
-  const categoryContainer = document.querySelector(`.${catString}Container`);
+  //const categoryContainer = document.querySelector(`.${catString}Container`);
   categoryContainer.appendChild(inputContainer);
 
   saveButton.addEventListener("click", async () => {
