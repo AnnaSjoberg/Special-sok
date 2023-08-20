@@ -175,7 +175,7 @@ async function initializeLog(db) {
         db,
         "distractionAttributes"
       );
-        
+
       const logFormContainer = document.querySelector(".log-form");
       const logConfirmationContainer =
         document.querySelector(".log-confirmation");
@@ -198,18 +198,21 @@ async function initializeLog(db) {
         }
       });
 
-      
       for (let i = 0; i < numObjectsValue; i++) {
         const objectDiv = createObjectDiv(db, objectCategories, i);
         objectContainer.appendChild(objectDiv);
       }
       loggingForm.appendChild(objectContainer);
 
-      await initializeDistractions(db, distractionContainer);
-      if (distractionContainer) {
-        loggingForm.appendChild(distractionContainer);
-      }
-      
+      distractionCategories.forEach(async (category) => {
+        if (category.includes("type")) {
+          await initializeDistractions(db, distractionContainer, category);
+          if (distractionContainer) {
+            loggingForm.appendChild(distractionContainer);
+          }
+        }
+      });
+
       if (noteCategory) {
         await createDropdown(db, noteCategory, loggingForm);
       }
@@ -226,33 +229,41 @@ async function initializeLog(db) {
 
         saveSessionButton.textContent = "Spara träningspass";
         saveSessionButton.addEventListener("click", () => {
-          
           // Extract selected options from dropdowns and checkboxes
           const objectData = [];
           const objectDivs = document.querySelectorAll(".object-div");
           objectDivs.forEach((objectDiv, i) => {
-            console.log('objectCategories inside objectDivs.forEach');
+            console.log("objectCategories inside objectDivs.forEach");
             console.log(objectCategories);
             const object = {};
             objectCategories.forEach((category) => {
-              console.log('objectCategories.forEach((category)');
+              console.log("objectCategories.forEach((category)");
               console.log(category);
               const catString = removePrefix(category);
               const input = objectDiv.querySelector(`#${catString}${i}`);
-              const inputValue = input ? input.value : '';
+              const inputValue = input ? input.value : "";
               object[category] = inputValue;
-              console.log('object[category]');
+              console.log("object[category]");
               console.log(object[category]);
             });
             objectData.push(object);
           });
 
-          const checkedDistractions = distractionContainer.querySelectorAll('input[type="checkbox"]:checked');
-          const distractionData = Array.from(checkedDistractions).map((checkbox) => checkbox.value);
+          const checkedDistractions = distractionContainer.querySelectorAll(
+            'input[type="checkbox"]:checked'
+          );
+          const distractionData = Array.from(checkedDistractions).map(
+            (checkbox) => checkbox.value
+          );
 
-          validateLoggingForm(db, sessionCategories, objectData, distractionData);
+          validateLoggingForm(
+            db,
+            sessionCategories,
+            objectData,
+            distractionData
+          );
         });
-        
+
         const clearButton = document.createElement("button");
         clearButton.classList.add("btn", "btn-secondary", "log-clear");
         clearButton.textContent = "Rensa formulär";
@@ -275,6 +286,307 @@ async function initializeLog(db) {
     });
   } catch (error) {
     console.error("Error initializing dropdown menus", error);
+  }
+}
+
+async function createDropdown(db, category, loggingForm) {
+  const categoryContainer = document.createElement("div");
+  const catString = removePrefix(category);
+  categoryContainer.className = `${catString}Container`;
+
+  if (category.includes("date")) {
+    const dateChooser = document.createElement("input");
+    dateChooser.className = "date-chooser";
+    dateChooser.type = "date";
+    dateChooser.id = catString;
+    categoryContainer.appendChild(dateChooser);
+  } else if (category.includes("notes")) {
+    const noteArea = document.createElement("textarea");
+    noteArea.rows = 4;
+    noteArea.placeholder = "Anteckningar (valfri)";
+    noteArea.className = "note-area";
+    noteArea.id = catString;
+    categoryContainer.appendChild(noteArea);
+  } else {
+    const logDropdown = document.createElement("select");
+    logDropdown.className = "select-logDropdown";
+    logDropdown.id = catString; // Set the id of the logDropdown to the category name
+
+    const placeholderOption = document.createElement("option");
+    // placeholderOption.value = "";
+    placeholderOption.textContent = beautifyLabel(category);
+    placeholderOption.disabled = true;
+    placeholderOption.selected = true;
+    logDropdown.appendChild(placeholderOption);
+
+    initializeDropdownOptions(db, logDropdown, category);
+
+    const addButton = createAddNewButton(
+      db,
+      category,
+      logDropdown,
+      categoryContainer
+    );
+    categoryContainer.appendChild(logDropdown);
+    categoryContainer.appendChild(addButton);
+  }
+  loggingForm.appendChild(categoryContainer);
+}
+function createObjectDiv(db, objectCategories, index) {
+  // Create a div for an object and initialize the dropdowns
+  const indObjectDiv = document.createElement("div");
+  indObjectDiv.className = "object-div";
+  indObjectDiv.id=`ind-object-div${index}`;
+
+  const label = document.createElement("label");
+  label.textContent = `Gömma ${index + 1}:`;
+  
+  indObjectDiv.appendChild(label);
+
+  objectCategories.forEach((objectCategory) => {
+    if (!objectCategory.includes("sessionID")) {
+      const catString = removePrefix(objectCategory);
+      const indCatDiv = document.createElement("div");
+      const objectDropdown = document.createElement("select");
+      objectDropdown.id = catString + index;
+      indCatDiv.appendChild(objectDropdown);
+
+      const placeholderOption = document.createElement("option");
+      placeholderOption.value = "";
+      placeholderOption.textContent = beautifyLabel(objectCategory);
+      placeholderOption.disabled = true;
+      placeholderOption.selected = true;
+      objectDropdown.appendChild(placeholderOption);
+
+      initializeDropdownOptions(db, objectDropdown, objectCategory);
+
+      if (!objectCategory.includes("found")) {
+        const addButton = createAddNewButton(
+          db,
+          objectCategory,
+          objectDropdown,
+          indCatDiv
+        );
+        indCatDiv.appendChild(addButton);
+      }
+
+      indObjectDiv.appendChild(indCatDiv);
+    }
+  });
+
+  return indObjectDiv;
+}
+
+async function initializeDistractions(db, distractionContainer, category) {
+  try {
+    const options = await fetchOptions(db, category); // Fetch options from indexedDB
+
+    console.log("inside initializeDistractions " + options.length);
+
+    //distractionContainer.innerHTML = "";
+
+    const addButton = createAddNewButton(
+      db,
+      category,
+      null,
+      distractionContainer
+    );
+    distractionContainer.appendChild(addButton);
+
+    options.forEach((option, index) => {
+      const checkboxContainer = document.createElement("div");
+
+      const checkboxLabel = document.createElement("label");
+      checkboxLabel.classList.add("checkbox-label");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = option;
+      checkbox.id = `distraction-${option}`;
+
+      const checkboxText = document.createTextNode(option);
+
+      checkboxLabel.appendChild(checkbox);
+      checkboxLabel.appendChild(checkboxText);
+      checkboxContainer.appendChild(checkboxLabel);
+
+      distractionContainer.appendChild(checkboxContainer);
+    });
+
+    return distractionContainer;
+  } catch (error) {
+    console.error("Error initializing distractions", error);
+  }
+}
+function createAddNewButton(
+  db,
+  category,
+  categoryDropdown = null,
+  categoryContainer
+) {
+  console.log(categoryContainer);
+  const addButton = document.createElement("button");
+  addButton.classList.add("btn", "btn-warning", "btn-sm");
+  addButton.type = "button";
+  addButton.textContent = "Lägg till nytt";
+
+  addButton.addEventListener("click", () => {
+    showAddNewInput(db, category, categoryDropdown, categoryContainer);
+  });
+
+  return addButton;
+}
+
+async function initializeDropdownOptions(db, dropdown, category) {
+  try {
+    const options = await fetchOptions(db, category); // Fetch options from indexedDB
+
+    options.forEach((option) => {
+      let optionString = String(option);
+
+      const optionElement = document.createElement("option");
+      if (option === true || option === false) {
+        optionString = translate(optionString);
+      }
+      optionElement.value = option;
+      optionElement.textContent = optionString;
+      dropdown.appendChild(optionElement);
+    });
+  } catch (error) {
+    console.error("Error initializing dropdown options", error);
+  }
+}
+async function showAddNewInput(
+  db,
+  category,
+  categoryDropdown = null,
+  categoryContainer
+) {
+  const catString = removePrefix(category);
+
+  const oldInputContainer = document.querySelector(".input-container");
+  if (oldInputContainer) {
+    oldInputContainer.remove();
+  }
+
+  const inputContainer = document.createElement("div");
+  inputContainer.className = "input-container";
+
+  const inputField = document.createElement("input");
+  inputField.type = "text";
+  inputField.placeholder = "Skriv in nytt alternativ";
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "button";
+  saveButton.classList.add("btn", "btn-danger", "btn-sm");
+  saveButton.textContent = "Spara";
+
+  inputContainer.appendChild(inputField);
+  inputContainer.appendChild(saveButton);
+
+  //const categoryContainer = document.querySelector(`.${catString}Container`);
+  categoryContainer.appendChild(inputContainer);
+
+  saveButton.addEventListener("click", async () => {
+    const newOptionValue = inputField.value.trim();
+
+    if (newOptionValue !== "") {
+      // Save the new option to the database (implement this function)
+      await saveNewOptionToDatabase(category, newOptionValue);
+
+      if (categoryDropdown) {
+        // Add new option directly to the dropdown
+        const optionElement = document.createElement("option");
+        optionElement.value = newOptionValue;
+        optionElement.textContent = newOptionValue;
+        categoryDropdown.appendChild(optionElement);
+        optionElement.selected = true;
+      } else {
+        const checkboxContainer = document.createElement("div");
+
+        const checkboxLabel = document.createElement("label");
+        checkboxLabel.classList.add("checkbox-label");
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = newOptionValue;
+        checkbox.id = `distraction-${newOptionValue}`;
+
+        const checkboxText = document.createTextNode(newOptionValue);
+
+        checkboxLabel.appendChild(checkbox);
+        checkboxLabel.appendChild(checkboxText);
+        checkboxContainer.appendChild(checkboxLabel);
+
+        // Tick the checkbox right away
+        checkbox.checked = true;
+
+        // Append the new container to the distractionContainer
+        categoryContainer.appendChild(checkboxContainer);
+      }
+
+      // Clear the input field
+      inputField.value = "";
+      inputContainer.remove();
+    }
+  });
+}
+async function validateLoggingForm(
+  db,
+  categories,
+  objectData,
+  distractionData
+) {
+  const formData = {};
+  const logConfirmationContainer = document.querySelector(".log-confirmation");
+  const confirmation = document.createElement("h4");
+
+  clearContainer(logConfirmationContainer);
+
+  logConfirmationContainer.appendChild(confirmation);
+
+  try {
+    for (const category of categories) {
+      const catString = removePrefix(category);
+      const option = document.querySelector(`#${catString}`);
+      if (category.includes("notes")) {
+        formData[category] = option ? option.value : "";
+      } else if (!option || option.value === "") {
+        confirmation.textContent = `Vänligen fyll i alla obligatoriska fält.`;
+        return;
+      } else {
+        formData[category] = option.value;
+      }
+    }
+
+    console.log("objectData");
+    console.log(objectData);
+    // Validate object data
+    const validObjectData = objectData.every((object) => {
+      //    console.log(object);
+      return Object.values(object).every((value) => {
+        if (typeof value === "string") {
+          return value.trim() !== ""; // Check for non-empty string after trimming whitespace
+        }
+        return value !== undefined && value !== null; // Check for non-empty non-string values
+      });
+    });
+    if (!validObjectData) {
+      confirmation.textContent = `Vänligen fyll i alla obligatoriska fält för objekten.`;
+      return;
+    }
+
+    await addSessionToDB(db, formData, objectData, distractionData);
+
+    confirmation.textContent = "Träningspass sparat!";
+  } catch (error) {
+    console.error("Error saving session:", error);
+    const errorDiv = document.createElement("div");
+    const errorText = document.createElement("h4");
+    errorText.textContent = "An error occurred while saving the session.";
+    errorDiv.appendChild(errorText);
+    const logFormContainer = document.querySelector(".log-form");
+    logFormContainer.appendChild(errorDiv);
   }
 }
 
@@ -485,307 +797,6 @@ function clearContainer(container) {
     container.removeChild(container.firstChild);
   }
 }
-
-async function createDropdown(db, category, loggingForm) {
-  const categoryContainer = document.createElement("div");
-  const catString = removePrefix(category);
-  categoryContainer.className = `${catString}Container`;
-
-  if (category.includes("date")) {
-    const dateChooser = document.createElement("input");
-    dateChooser.className = "date-chooser";
-    dateChooser.type = "date";
-    dateChooser.id = catString;
-    categoryContainer.appendChild(dateChooser);
-  } else if (category.includes("notes")) {
-    const noteArea = document.createElement("textarea");
-    noteArea.rows = 4;
-    noteArea.placeholder = "Anteckningar (valfri)";
-    noteArea.className = "note-area";
-    noteArea.id = catString;
-    categoryContainer.appendChild(noteArea);
-  } else {
-    const logDropdown = document.createElement("select");
-    logDropdown.className = "select-logDropdown";
-    logDropdown.id = catString; // Set the id of the logDropdown to the category name
-
-    const placeholderOption = document.createElement("option");
-    // placeholderOption.value = "";
-    placeholderOption.textContent = beautifyLabel(category);
-    placeholderOption.disabled = true;
-    placeholderOption.selected = true;
-    logDropdown.appendChild(placeholderOption);
-
-    initializeDropdownOptions(db, logDropdown, category);
-
-    const addButton = createAddNewButton(
-      db,
-      category,
-      logDropdown,
-      categoryContainer
-    );
-    categoryContainer.appendChild(logDropdown);
-    categoryContainer.appendChild(addButton);
-  }
-  loggingForm.appendChild(categoryContainer);
-}
-function createObjectDiv(db, objectCategories, index) {
-  // Create a div for an object and initialize the dropdowns
-  const indObjectDiv = document.createElement("div");
-  indObjectDiv.className = "object-div";
-
-  const label = document.createElement("label");
-  label.textContent = `Gömma ${index + 1}:`;
-  indObjectDiv.appendChild(label);
-
-  objectCategories.forEach((objectCategory) => {
-    if (!objectCategory.includes("sessionID")) {
-      const catString = removePrefix(objectCategory);
-      const indCatDiv = document.createElement("div");
-      const objectDropdown = document.createElement("select");
-      objectDropdown.id = catString + index;
-      indCatDiv.appendChild(objectDropdown);
-
-      const placeholderOption = document.createElement("option");
-      placeholderOption.value = "";
-      placeholderOption.textContent = beautifyLabel(objectCategory);
-      placeholderOption.disabled = true;
-      placeholderOption.selected = true;
-      objectDropdown.appendChild(placeholderOption);
-
-      initializeDropdownOptions(db, objectDropdown, objectCategory);
-
-      if (!objectCategory.includes("found")) {
-        const addButton = createAddNewButton(
-          db,
-          objectCategory,
-          objectDropdown,
-          indCatDiv
-        );
-        indCatDiv.appendChild(addButton);
-      }
-
-      indObjectDiv.appendChild(indCatDiv);
-    }
-  });
-
-  return indObjectDiv;
-}
-
-async function initializeDistractions(db, distractionContainer) {
-  try {
-    const options = await fetchOptions(db, "distractions"); // Fetch options from indexedDB
-
-    console.log("inside initializeDistractions");
-
-    //distractionContainer.innerHTML = "";
-
-    
-    const addButton = createAddNewButton(
-      db,
-      "distractions",
-      null,
-      distractionContainer
-    );
-    distractionContainer.appendChild(addButton);
-
-    options.forEach((option, index) => {
-      const checkboxContainer= document.createElement('div');
-
-      const checkboxLabel = document.createElement("label");
-      checkboxLabel.classList.add("checkbox-label");
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = option;
-      checkbox.id = `distraction-${option}`;
-
-      const checkboxText = document.createTextNode(option);
-
-      checkboxLabel.appendChild(checkbox);
-      checkboxLabel.appendChild(checkboxText);
-      checkboxContainer.appendChild(checkboxLabel);
-
-      distractionContainer.appendChild(checkboxContainer);
-    });
-
-
-    return distractionContainer;
-  } catch (error) {
-    console.error("Error initializing distractions", error);
-  }
-}
-function createAddNewButton(
-  db,
-  category,
-  categoryDropdown = null,
-  categoryContainer
-) {
-
-  console.log(categoryContainer);
-  const addButton = document.createElement("button");
-  addButton.classList.add("btn", "btn-warning", "btn-sm");
-  addButton.type = "button";
-  addButton.textContent = "Lägg till nytt";
-
-  addButton.addEventListener("click", () => {
-    
-    showAddNewInput(db, category, categoryDropdown, categoryContainer);
-  });
-
-  return addButton;
-}
-
-async function initializeDropdownOptions(db, dropdown, category) {
-  try {
-    const options = await fetchOptions(db, category); // Fetch options from indexedDB
-
-    options.forEach((option) => {
-      let optionString = String(option);
-
-      const optionElement = document.createElement("option");
-      if (option === true || option === false) {
-        optionString = translate(optionString);
-      }
-      optionElement.value = option;
-      optionElement.textContent = optionString;
-      dropdown.appendChild(optionElement);
-    });
-  } catch (error) {
-    console.error("Error initializing dropdown options", error);
-  }
-}
-async function showAddNewInput(
-  db,
-  category,
-  categoryDropdown = null,
-  categoryContainer
-) {
-  const catString = removePrefix(category);
-
-  const oldInputContainer = document.querySelector(".input-container");
-  if (oldInputContainer) {
-    oldInputContainer.remove();
-  }
-
-  const inputContainer = document.createElement("div");
-  inputContainer.className = "input-container";
-
-  const inputField = document.createElement("input");
-  inputField.type = "text";
-  inputField.placeholder = "Skriv in nytt alternativ";
-
-  const saveButton = document.createElement("button");
-  saveButton.type = "button";
-  saveButton.classList.add("btn", "btn-danger", "btn-sm");
-  saveButton.textContent = "Spara";
-
-  inputContainer.appendChild(inputField);
-  inputContainer.appendChild(saveButton);
-
-  //const categoryContainer = document.querySelector(`.${catString}Container`);
-  categoryContainer.appendChild(inputContainer);
-
-  saveButton.addEventListener("click", async () => {
-    const newOptionValue = inputField.value.trim();
-
-    if (newOptionValue !== "") {
-      // Save the new option to the database (implement this function)
-      await saveNewOptionToDatabase(category, newOptionValue);
-
-      if (categoryDropdown) {
-        // Add new option directly to the dropdown
-        const optionElement = document.createElement("option");
-        optionElement.value = newOptionValue;
-        optionElement.textContent = newOptionValue;
-        categoryDropdown.appendChild(optionElement);
-        optionElement.selected = true;
-      } else {
-        const checkboxContainer = document.createElement("div");
-
-      const checkboxLabel = document.createElement("label");
-      checkboxLabel.classList.add("checkbox-label");
-
-      const checkbox = document.createElement("input");
-      checkbox.type = "checkbox";
-      checkbox.value = newOptionValue;
-      checkbox.id = `distraction-${newOptionValue}`;
-
-      const checkboxText = document.createTextNode(newOptionValue);
-
-      checkboxLabel.appendChild(checkbox);
-      checkboxLabel.appendChild(checkboxText);
-      checkboxContainer.appendChild(checkboxLabel);
-      
-      // Tick the checkbox right away
-      checkbox.checked = true;
-
-      // Append the new container to the distractionContainer
-      categoryContainer.appendChild(checkboxContainer);
-      }
-
-      // Clear the input field
-      inputField.value = "";
-      inputContainer.remove();
-    }
-  });
-}
-async function validateLoggingForm(db, categories, objectData, distractionData) {
-  const formData = {};
-  const logConfirmationContainer = document.querySelector(".log-confirmation");
-  const confirmation = document.createElement("h4");
-
-  clearContainer(logConfirmationContainer);
-
-  logConfirmationContainer.appendChild(confirmation);
-  
-
-  try {
-    for (const category of categories) {
-      const catString = removePrefix(category);
-      const option = document.querySelector(`#${catString}`);
-      if (category.includes("notes")) {
-        formData[category] = option ? option.value : "";
-      } else if (!option || option.value === "") {
-        confirmation.textContent = `Vänligen fyll i alla obligatoriska fält.`;
-        return;
-      } else {
-        formData[category] = option.value;
-       
-      }
-    }
-    
-console.log('objectData');
-console.log(objectData);
-    // Validate object data
-    const validObjectData = objectData.every((object) => {
-  //    console.log(object);
-      return Object.values(object).every((value) => {
-        if (typeof value === 'string') {
-          return value.trim() !== ''; // Check for non-empty string after trimming whitespace
-        }
-        return value !== undefined && value !== null; // Check for non-empty non-string values
-      });
-    });
-    if (!validObjectData) {
-      confirmation.textContent = `Vänligen fyll i alla obligatoriska fält för objekten.`;
-      return;
-    }
-
-    await addSessionToDB(db, formData, objectData, distractionData);
-
-    confirmation.textContent = "Träningspass sparat!";
-  } catch (error) {
-    console.error("Error saving session:", error);
-    const errorDiv = document.createElement("div");
-    const errorText = document.createElement("h4");
-    errorText.textContent = "An error occurred while saving the session.";
-    errorDiv.appendChild(errorText);
-    const logFormContainer = document.querySelector(".log-form");
-    logFormContainer.appendChild(errorDiv);
-  }
-}
-
 
 function removePrefix(category) {
   return String(category).substring(String(category).search(/_/) + 1);
