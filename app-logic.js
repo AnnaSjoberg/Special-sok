@@ -33,125 +33,6 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializeView(db);
   });
 });
-/*
-async function initializeLog(db) {
-  try {
-    if (db) {
-      console.log("db found in initializeLog");
-    }
-    // Show the modal
-    const modal = document.getElementById("objectModal");
-    const submitButton = document.getElementById("submit-num-objects");
-    const numObjectsInput = document.getElementById("num-objects-modal");
-
-    modal.style.display = "block";
-
-    // Handle the submit button
-    submitButton.addEventListener("click", async () => {
-      const numObjectsValue = parseInt(numObjectsInput.value, 10) || 1;
-
-      // Close the modal
-      modal.style.display = "none";
-
-      // Fetch sessionCategories from the database
-      const sessionCategories = await fetchCategories(db, "sessionAttributes");
-      const objectCategories = await fetchCategories(db, "objectAttributes");
-      const distractionCategories = await fetchCategories(
-        db,
-        "distractionAttributes"
-      );
-
-      const logFormContainer = document.querySelector(".log-form"); // Use the correct selector for your container
-      const logConfirmationContainer =
-        document.querySelector(".log-confirmation");
-      const loggingForm = document.querySelector("#logging-form");
-      const sessionContainer = document.querySelector(".session-container");
-      const objectContainer = document.querySelector(".object-container");
-      const distractionContainer = document.querySelector(
-        ".distraction-container"
-      );
-      const dropdownPromises = [];
-
-      clearContainer(logConfirmationContainer);
-
-      let noteCategory;
-      sessionCategories.forEach(async (category) => {
-        if (category.includes("notes")) {
-          noteCategory = category;
-        } else {
-          await createDropdown(db, category, loggingForm);
-        }
-      });
-
-      const objectData = [];
-      for (let i = 0; i < numObjectsValue; i++) {
-        const objectDiv = createObjectDiv(db, objectCategories, i);
-        objectContainer.appendChild(objectDiv);
-        const object = {}; // Construct the object data for each object
-        objectCategories.forEach((category) => {
-          const catString = removePrefix(category);
-          const input = objectDiv.querySelector(`#${catString}${i}`);
-          const inputValue = input ? input.value : '';
-          console.log(`Category: ${category}, Input Value: ${inputValue}`);
-          object[category] = input ? input.value : '';
-        });
-        objectData.push(object);
-      }
-      loggingForm.appendChild(objectContainer);
-
-      await initializeDistractions(db, distractionContainer);
-    const checkedDistractions = distractionContainer.querySelectorAll('input[type="checkbox"]:checked');
-    const distractionData = [];
-    checkedDistractions.forEach((checkbox) => {
-      distractionData.push(checkbox.value);
-    });
-    if (distractionContainer) {
-      loggingForm.appendChild(distractionContainer);
-    }
-
-      if (noteCategory) {
-        await createDropdown(db, noteCategory, loggingForm);
-      }
-
-      // Wait for all dropdowns to be created before appending the button
-      Promise.all(dropdownPromises).then((dropdowns) => {
-        dropdowns.forEach((dropdown) => {
-          logFormContainer.appendChild(dropdown);
-        });
-        const buttonDiv = document.createElement("div");
-        buttonDiv.className = "button-div";
-        const saveSessionButton = document.createElement("button");
-        saveSessionButton.classList.add("btn", "btn-success", "log-save");
-
-        saveSessionButton.textContent = "Spara träningspass";
-        saveSessionButton.addEventListener("click", () =>
-          validateLoggingForm(db, sessionCategories,objectData,distractionData)
-        );
-        const clearButton = document.createElement("button");
-        clearButton.classList.add("btn", "btn-secondary", "log-clear");
-        clearButton.textContent = "Rensa formulär";
-        clearButton.addEventListener("click", () => {
-          // Reset the input fields within the container
-          loggingForm.reset();
-          clearContainer(logConfirmationContainer);
-          const dropdowns = logFormContainer.querySelectorAll("select");
-          dropdowns.forEach((dropdown) => {
-            dropdown.selectedIndex = 0; // Reset to the placeholder option
-          });
-        });
-
-        buttonDiv.appendChild(saveSessionButton);
-        buttonDiv.appendChild(clearButton);
-
-        logFormContainer.appendChild(buttonDiv);
-        logFormContainer.appendChild(logConfirmationContainer);
-      });
-    });
-  } catch (error) {
-    console.error("Error initializing dropdown menus", error);
-  }
-}
-*/
 async function initializeLog(db) {
   try {
     // Show the modal
@@ -168,7 +49,7 @@ async function initializeLog(db) {
       // Close the modal
       modal.style.display = "none";
 
-      // Fetch sessionCategories from the database
+      // Fetch all categories from the database
       const sessionCategories = await fetchCategories(db, "sessionAttributes");
       const objectCategories = await fetchCategories(db, "objectAttributes");
       const distractionCategories = await fetchCategories(
@@ -194,7 +75,7 @@ async function initializeLog(db) {
         if (category.includes("notes")) {
           noteCategory = category;
         } else {
-          await createDropdown(db, category, loggingForm);
+          await createLogDropdowns(db, category, loggingForm);
         }
       });
 
@@ -214,7 +95,7 @@ async function initializeLog(db) {
       });
 
       if (noteCategory) {
-        await createDropdown(db, noteCategory, loggingForm);
+        await createLogDropdowns(db, noteCategory, loggingForm);
       }
 
       // Wait for all dropdowns to be created before appending the button
@@ -289,7 +170,7 @@ async function initializeLog(db) {
   }
 }
 
-async function createDropdown(db, category, loggingForm) {
+async function createLogDropdowns(db, category, loggingForm) {
   const categoryContainer = document.createElement("div");
   const catString = removePrefix(category);
   categoryContainer.className = `${catString}Container`;
@@ -336,11 +217,11 @@ function createObjectDiv(db, objectCategories, index) {
   // Create a div for an object and initialize the dropdowns
   const indObjectDiv = document.createElement("div");
   indObjectDiv.className = "object-div";
-  indObjectDiv.id=`ind-object-div${index}`;
+  indObjectDiv.id = `ind-object-div${index}`;
 
   const label = document.createElement("label");
   label.textContent = `Gömma ${index + 1}:`;
-  
+
   indObjectDiv.appendChild(label);
 
   objectCategories.forEach((objectCategory) => {
@@ -592,7 +473,12 @@ async function validateLoggingForm(
 
 async function initializeView(db) {
   try {
-    const categories = await fetchCategories(db);
+    const sessionCategories = await fetchCategories(db, "sessionAttributes");
+    const objectCategories = await fetchCategories(db, "objectAttributes");
+    const distractionCategories = await fetchCategories(
+      db,
+      "distractionAttributes"
+    );
 
     const filterContainer = document.querySelector(".filter-container");
     const displayContainer = document.querySelector(".view-sessions");
@@ -600,33 +486,39 @@ async function initializeView(db) {
     clearContainer(filterContainer);
     clearContainer(displayContainer);
 
+    const viewCategoryContainers=[];
+
     // Loop through categories and create dropdowns
-    categories.forEach(async (category) => {
-      const catString = removePrefix(category);
+    sessionCategories.forEach(async (category) => {
       if (!category.includes("date") && !category.includes("notes")) {
-        const viewCategoryContainer = document.createElement("div");
-        viewCategoryContainer.className = `view-${catString}-container`;
-
-        const label = document.createElement("label");
-        label.textContent = beautifyLabel(category);
-        viewCategoryContainer.appendChild(label);
-
-        const viewDropdown = document.createElement("select");
-        viewDropdown.className = "select-viewDropdown";
-        viewDropdown.id = catString; // Set the id of the viewDropdown to the category name
-        viewCategoryContainer.appendChild(viewDropdown);
+        const viewCategoryContainer = createViewDropdowns(
+          db,
+          category,
+          displayContainer
+        );
         filterContainer.appendChild(viewCategoryContainer);
-
-        await initializeDropdownOptions(db, viewDropdown, category);
+        viewCategoryContainers.push(viewCategoryContainer);
       }
     });
+    distractionCategories.forEach(async (category) => {
+      if (!category.includes("date") && !category.includes("notes")) {
+        const viewCategoryContainer = createViewDropdowns(
+          db,
+          category,
+          displayContainer
+        );
+        filterContainer.appendChild(viewCategoryContainer);
+        viewCategoryContainers.push(viewCategoryContainer);
+      }
+    });
+
     const filterButton = document.createElement("button");
     filterButton.classList.add("btn", "btn-primary");
     filterButton.textContent = "Filtrera och visa";
     filterContainer.appendChild(filterButton);
     filterButton.addEventListener("click", async () => {
       //const filters = collectFilters();
-      const filters = await collectFilters(categories);
+      const filters = await collectFilters(viewCategoryContainers);
       filters.forEach((filter, index) => {
         console.log(
           `Filter ${index}: Category: ${filter.category}, Option: ${filter.option}`
@@ -639,23 +531,46 @@ async function initializeView(db) {
     console.error("Error initializing viewing", error);
   }
 }
+function createViewDropdowns(db, category, displayContainer) {
+  const catString = removePrefix(category);
+  const viewCategoryContainer = document.createElement("div");
+  viewCategoryContainer.className = `view-${catString}-container`;
 
-async function collectFilters(categories) {
+  const viewDropdown = document.createElement("select");
+  viewDropdown.className = "select-viewDropdown";
+  viewDropdown.id = catString; // Set the id of the viewDropdown to the category name
+  
+  const placeholderOption = document.createElement("option");
+    // placeholderOption.value = "";
+    placeholderOption.textContent = beautifyLabel(category);
+    placeholderOption.disabled = true;
+    placeholderOption.selected = true;
+    viewDropdown.appendChild(placeholderOption);
+  
+  viewCategoryContainer.appendChild(viewDropdown);
+
+  initializeDropdownOptions(db, viewDropdown, category);
+
+  return viewCategoryContainer;
+}
+
+async function collectFilters(viewCategoryContainers) {
   const filters = [];
-  const dropdowns = document.querySelectorAll(".select-viewDropdown");
 
-  dropdowns.forEach((dropdown) => {
+  viewCategoryContainers.forEach((container) => {
+    const dropdown = container.querySelector(".select-viewDropdown");
     const dropdownId = dropdown.id;
-    const category = String(
-      categories.find((cat) => dropdownId === removePrefix(cat))
-    ); // Map dropdown.id to corresponding category
     const selectedOption = dropdown.value;
+    const category = container.getAttribute("data-category");
+    const placeholderOption = dropdown.querySelector("option[disabled]"); // Get the disabled placeholder option
 
-    if (selectedOption) {
+
+    if (selectedOption && selectedOption !== placeholderOption.value) {
       filters.push({ category, option: selectedOption });
     }
   });
-
+console.log('filters');
+console.log(filters);
   return filters;
 }
 async function fetchAndDisplayFilteredSessions(db, filters) {
@@ -867,6 +782,7 @@ function translate(string) {
       break;
 
     case "distraction":
+    case "type":
       string = "störning";
       break;
 

@@ -217,7 +217,7 @@ function openDatabase() {
     };
   });
 }
-//sessionID
+
 
 async function fetchCategories(db, objectStoreName) {
   return new Promise((resolve, reject) => {
@@ -251,58 +251,6 @@ async function fetchOptions(db, attribute) {
     };
 
     getRequest.onerror = function (event) {
-      reject(event.target.error);
-    };
-  });
-}
-
-async function addSessionToDB(db, session, objects, distractionData) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction(
-      ["sessions", "objects", "distractions"],
-      "readwrite"
-    );
-    const sessionStore = transaction.objectStore("sessions");
-    const objectStore = transaction.objectStore("objects");
-    const distractionStore = transaction.objectStore("distractions");
-
-    const sessionRequest = sessionStore.add(session);
-
-    sessionRequest.onsuccess = async function (event) {
-      const sessionID = event.target.result;
-      //console.log(objects);
-      // Save sessionID for objects and distractions
-      objects.forEach((object) => {
-        //console.log(object);
-        object.sessionID = sessionID;
-        
-      });
-        // Create distractions based on distractionData
-        const distractions = distractionData.map((distractionType) => ({
-          type: distractionType,
-          sessionID: sessionID,
-        }));
-
-      // Save objects and distractions in their respective stores
-      const objectSavePromises = objects.map((object) =>
-        objectStore.add(object)
-      );
-      const distractionSavePromises = distractions.map((distraction) =>
-      distractionStore.add(distraction)
-    );
-
-
-      const allSavePromises = [
-        ...objectSavePromises,
-        ...distractionSavePromises,
-      ];
-
-      Promise.all(allSavePromises)
-        .then(() => resolve(sessionID))
-        .catch((error) => reject(error));
-    };
-
-    sessionRequest.onerror = function (event) {
       reject(event.target.error);
     };
   });
@@ -372,4 +320,56 @@ async function saveNewOptionToDatabase(attribute, option) {
     console.error("Error adding option to attribute", error);
     throw error;
   }
+}
+
+async function addSessionToDB(db, session, objects, distractionData) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(
+      ["sessions", "objects", "distractions"],
+      "readwrite"
+    );
+    const sessionStore = transaction.objectStore("sessions");
+    const objectStore = transaction.objectStore("objects");
+    const distractionStore = transaction.objectStore("distractions");
+
+    const sessionRequest = sessionStore.add(session);
+
+    sessionRequest.onsuccess = async function (event) {
+      const sessionID = event.target.result;
+      //console.log(objects);
+      // Save sessionID for objects and distractions
+      objects.forEach((object) => {
+        //console.log(object);
+        object.sessionID = sessionID;
+        
+      });
+        // Create distractions based on distractionData
+        const distractions = distractionData.map((distractionType) => ({
+          type: distractionType,
+          sessionID: sessionID,
+        }));
+
+      // Save objects and distractions in their respective stores
+      const objectSavePromises = objects.map((object) =>
+        objectStore.add(object)
+      );
+      const distractionSavePromises = distractions.map((distraction) =>
+      distractionStore.add(distraction)
+    );
+
+
+      const allSavePromises = [
+        ...objectSavePromises,
+        ...distractionSavePromises,
+      ];
+
+      Promise.all(allSavePromises)
+        .then(() => resolve(sessionID))
+        .catch((error) => reject(error));
+    };
+
+    sessionRequest.onerror = function (event) {
+      reject(event.target.error);
+    };
+  });
 }
