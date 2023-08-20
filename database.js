@@ -48,11 +48,11 @@ function openDatabase() {
 
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
-    console.log("inside promise");
+    
 
     request.onupgradeneeded = function (event) {
       const db = event.target.result;
-      console.log("inside request");
+      
 
       // Create the combined object store for all sessionAttributes
       const sessionAttributesStore = db.createObjectStore("sessionAttributes", {
@@ -82,14 +82,12 @@ function openDatabase() {
       const objectAttributesStore = db.createObjectStore("objectAttributes", {
         keyPath: "name",
       });
-      console.log("Create the combined object store for all objectAttributes");
+      
 
       // Add initial objectAttributes to the combined object store
       objectAttributes.forEach((objectAttribute) => {
         objectAttributesStore.add({ name: objectAttribute });
-        console.log(
-          "Add initial objectAttributes to the combined object store"
-        );
+      
       });
 
       // Create separate object stores for objectAttributes options
@@ -98,18 +96,13 @@ function openDatabase() {
           keyPath: "id",
           autoIncrement: true,
         });
-        console.log(
-          "Create separate object stores for objectAttributes options"
-        );
+      
 
         // Add initial object options to the category object store
         const objectOptions = initialObjectOptions[objectAttribute] || [];
         objectOptions.forEach((objectOption) => {
           objectAttributeStore.add(objectOption);
 
-          console.log(
-            " Add initial object options to the category object store"
-          );
         });
       });
 
@@ -120,16 +113,11 @@ function openDatabase() {
           keyPath: "name",
         }
       );
-      console.log(
-        " Create the combined object store for all distractionAttributes"
-      );
+
 
       // Add initial distractionAttributes to the combined object store
       distractionAttributes.forEach((distractionAttribute) => {
         distractionAttributesStore.add({ name: distractionAttribute });
-        console.log(
-          "Add initial distractionAttributes to the combined object store"
-        );
       });
 
       // Create separate object stores for distractionAttributes options
@@ -141,18 +129,12 @@ function openDatabase() {
             autoIncrement: true,
           }
         );
-        console.log(
-          " Create separate object stores for distractionAttributes options"
-        );
         // Add initial distraction options to the attribute object store
         const distractionOptions =
           initialDistractionOptions[distractionAttribute] || [];
         distractionOptions.forEach((distractionOption) => {
           distractionAttributeStore.add(distractionOption);
 
-          console.log(
-            " Add initial distraction options to the attribute object store"
-          );
         });
       });
 
@@ -161,7 +143,7 @@ function openDatabase() {
         keyPath: "id",
         autoIncrement: true,
       });
-      console.log(" Create the object store for sessions");
+      
       // Modify category names to remove numeric prefixes
       const sessionKeyPaths = sessionAttributes.map((category) =>
         category.replace(/^\d+_/g, "")
@@ -172,7 +154,7 @@ function openDatabase() {
         sessionStore.createIndex(keyPath, keyPath, { unique: false });
       });
 
-      console.log(" Use the modified key paths in the createIndex method");
+     
       // Create the object store for objects
       const objectStore = db.createObjectStore("objects", {
         keyPath: "id",
@@ -193,7 +175,7 @@ function openDatabase() {
         keyPath: "id",
         autoIncrement: true,
       });
-      console.log(" Create the object store for distractions");
+     
       // Modify category names to remove numeric prefixes
       const distractionKeyPaths = distractionAttributes.map((category) =>
         category.replace(/^\d+_/g, "")
@@ -203,9 +185,7 @@ function openDatabase() {
       distractionKeyPaths.forEach((keyPath) => {
         distractionStore.createIndex(keyPath, keyPath, { unique: false });
       });
-      console.log(
-        "Use the modified key paths in the createIndex method DISTRACTION"
-      );
+     
     };
 
     request.onsuccess = function (event) {
@@ -256,44 +236,6 @@ async function fetchOptions(db, attribute) {
   });
 }
 
-function getAllTrainingSessions(db) {
-  return new Promise((resolve, reject) => {
-    const transaction = db.transaction("sessions", "readonly");
-    const sessionStore = transaction.objectStore("sessions");
-    const queryRequest = sessionStore.openCursor();
-    const sessions = [];
-
-    queryRequest.onsuccess = function (event) {
-      const cursor = event.target.result;
-      if (cursor) {
-        sessions.push(cursor.value);
-        cursor.continue();
-      } else {
-        resolve(sessions);
-      }
-    };
-
-    queryRequest.onerror = function (event) {
-      reject("Error querying training sessions");
-    };
-  });
-}
-async function getSessionsByFilters(db, filters) {
-  const allSessions = await getAllTrainingSessions(db);
-
-  const filteredSessions = allSessions.filter((session) => {
-    return filters.every((filter) => {
-      const category = filter.category;
-      const option = filter.option;
-
-      return session[category] === option;
-    });
-  });
-
-  console.log(filteredSessions.length);
-  return filteredSessions;
-}
-
 async function saveNewOptionToDatabase(attribute, option) {
   // Save the new option to the database
   try {
@@ -336,10 +278,8 @@ async function addSessionToDB(db, session, objects, distractionData) {
 
     sessionRequest.onsuccess = async function (event) {
       const sessionID = event.target.result;
-      //console.log(objects);
-      // Save sessionID for objects and distractions
       objects.forEach((object) => {
-        //console.log(object);
+      
         object.sessionID = sessionID;
         
       });
@@ -373,3 +313,126 @@ async function addSessionToDB(db, session, objects, distractionData) {
     };
   });
 }
+async function getCombinedSessionsByFilters(db, filters) {
+  const { sessions, distractions, objects } = await getAllData(db);
+
+  const combinedSessions = sessions.map((session) => {
+    return combineSessionData(session, objects, distractions);
+  });
+
+  const filteredSessions = filterSessionsByFilters(combinedSessions, filters);
+
+  return filteredSessions;
+}
+
+async function getAllData(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction(["sessions", "distractions", "objects"], "readonly");
+    const sessionStore = transaction.objectStore("sessions");
+    const distractionStore = transaction.objectStore("distractions");
+    const objectStore = transaction.objectStore("objects");
+
+    const sessionsQuery = sessionStore.openCursor();
+    const distractionsQuery = distractionStore.openCursor();
+    const objectsQuery = objectStore.openCursor();
+
+    const allSessions = [];
+    const allDistractions = [];
+    const allObjects = [];
+
+    sessionsQuery.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        allSessions.push(cursor.value);
+        cursor.continue();
+      }
+    };
+
+    distractionsQuery.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        allDistractions.push(cursor.value);
+        cursor.continue();
+      }
+    };
+
+    objectsQuery.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        allObjects.push(cursor.value);
+        cursor.continue();
+      }
+    };
+
+    transaction.oncomplete = function () {
+      resolve({ sessions: allSessions, distractions: allDistractions, objects: allObjects });
+    };
+
+    transaction.onerror = function () {
+      reject("Error fetching data");
+    };
+  });
+}
+
+function combineSessionData(session, objects, distractions) {
+  const combinedSession = { ...session };
+
+  combinedSession.objects = objects.filter((object) => object.sessionID === session.id);
+  combinedSession.distractions = distractions.filter((distraction) => distraction.sessionID === session.id);
+
+  return combinedSession;
+}
+
+function filterSessionsByFilters(combinedSessions, filters) {
+  return combinedSessions.filter((session) => {
+    return filters.every((filter) => {
+      const category = filter.category;
+      const option = filter.option;
+
+      return session[category] === option;
+    });
+  });
+}
+
+
+
+/*
+
+function getAllTrainingSessions(db) {
+  return new Promise((resolve, reject) => {
+    const transaction = db.transaction("sessions", "readonly");
+    const sessionStore = transaction.objectStore("sessions");
+    const queryRequest = sessionStore.openCursor();
+    const sessions = [];
+
+    queryRequest.onsuccess = function (event) {
+      const cursor = event.target.result;
+      if (cursor) {
+        sessions.push(cursor.value);
+        cursor.continue();
+      } else {
+        resolve(sessions);
+      }
+    };
+
+    queryRequest.onerror = function (event) {
+      reject("Error querying training sessions");
+    };
+  });
+}
+async function getSessionsByFilters(db, filters) {
+  const allSessions = await getAllTrainingSessions(db);
+
+  const filteredSessions = allSessions.filter((session) => {
+    return filters.every((filter) => {
+      const category = filter.category;
+      const option = filter.option;
+
+      return session[category] === option;
+    });
+  });
+
+  console.log(filteredSessions.length);
+  return filteredSessions;
+}
+*/

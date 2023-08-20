@@ -3,10 +3,6 @@
 document.addEventListener("DOMContentLoaded", async function () {
   const db = await openDatabase(); // Open the database
 
-  if (db) {
-    console.log("db found in DOM");
-  }
-
   const logLink = document.getElementById("logLink");
   const viewLink = document.getElementById("viewLink");
   const loggingSection = document.getElementById("loggingSection");
@@ -33,6 +29,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializeView(db);
   });
 });
+async function createObjectModal(params) {
+  
+}
 async function initializeLog(db) {
   try {
     // Show the modal
@@ -114,18 +113,12 @@ async function initializeLog(db) {
           const objectData = [];
           const objectDivs = document.querySelectorAll(".object-div");
           objectDivs.forEach((objectDiv, i) => {
-            console.log("objectCategories inside objectDivs.forEach");
-            console.log(objectCategories);
             const object = {};
             objectCategories.forEach((category) => {
-              console.log("objectCategories.forEach((category)");
-              console.log(category);
               const catString = removePrefix(category);
               const input = objectDiv.querySelector(`#${catString}${i}`);
               const inputValue = input ? input.value : "";
               object[category] = inputValue;
-              console.log("object[category]");
-              console.log(object[category]);
             });
             objectData.push(object);
           });
@@ -262,10 +255,6 @@ async function initializeDistractions(db, distractionContainer, category) {
   try {
     const options = await fetchOptions(db, category); // Fetch options from indexedDB
 
-    console.log("inside initializeDistractions " + options.length);
-
-    //distractionContainer.innerHTML = "";
-
     const addButton = createAddNewButton(
       db,
       category,
@@ -305,7 +294,6 @@ function createAddNewButton(
   categoryDropdown = null,
   categoryContainer
 ) {
-  console.log(categoryContainer);
   const addButton = document.createElement("button");
   addButton.classList.add("btn", "btn-warning", "btn-sm");
   addButton.type = "button";
@@ -440,11 +428,9 @@ async function validateLoggingForm(
       }
     }
 
-    console.log("objectData");
-    console.log(objectData);
     // Validate object data
     const validObjectData = objectData.every((object) => {
-      //    console.log(object);
+      //
       return Object.values(object).every((value) => {
         if (typeof value === "string") {
           return value.trim() !== ""; // Check for non-empty string after trimming whitespace
@@ -486,7 +472,7 @@ async function initializeView(db) {
     clearContainer(filterContainer);
     clearContainer(displayContainer);
 
-    const viewCategoryContainers=[];
+    const viewCategoryContainers = [];
 
     // Loop through categories and create dropdowns
     sessionCategories.forEach(async (category) => {
@@ -500,6 +486,7 @@ async function initializeView(db) {
         viewCategoryContainers.push(viewCategoryContainer);
       }
     });
+    /*
     distractionCategories.forEach(async (category) => {
       if (!category.includes("date") && !category.includes("notes")) {
         const viewCategoryContainer = createViewDropdowns(
@@ -511,7 +498,7 @@ async function initializeView(db) {
         viewCategoryContainers.push(viewCategoryContainer);
       }
     });
-
+*/
     const filterButton = document.createElement("button");
     filterButton.classList.add("btn", "btn-primary");
     filterButton.textContent = "Filtrera och visa";
@@ -519,11 +506,6 @@ async function initializeView(db) {
     filterButton.addEventListener("click", async () => {
       //const filters = collectFilters();
       const filters = await collectFilters(viewCategoryContainers);
-      filters.forEach((filter, index) => {
-        console.log(
-          `Filter ${index}: Category: ${filter.category}, Option: ${filter.option}`
-        );
-      });
 
       fetchAndDisplayFilteredSessions(db, filters);
     });
@@ -535,18 +517,19 @@ function createViewDropdowns(db, category, displayContainer) {
   const catString = removePrefix(category);
   const viewCategoryContainer = document.createElement("div");
   viewCategoryContainer.className = `view-${catString}-container`;
+  viewCategoryContainer.setAttribute("data-category", category); // Set the data-category attribute
 
   const viewDropdown = document.createElement("select");
   viewDropdown.className = "select-viewDropdown";
   viewDropdown.id = catString; // Set the id of the viewDropdown to the category name
-  
+
   const placeholderOption = document.createElement("option");
-    // placeholderOption.value = "";
-    placeholderOption.textContent = beautifyLabel(category);
-    placeholderOption.disabled = true;
-    placeholderOption.selected = true;
-    viewDropdown.appendChild(placeholderOption);
-  
+  // placeholderOption.value = "";
+  placeholderOption.textContent = beautifyLabel(category);
+  placeholderOption.disabled = true;
+  placeholderOption.selected = true;
+  viewDropdown.appendChild(placeholderOption);
+
   viewCategoryContainer.appendChild(viewDropdown);
 
   initializeDropdownOptions(db, viewDropdown, category);
@@ -564,24 +547,213 @@ async function collectFilters(viewCategoryContainers) {
     const category = container.getAttribute("data-category");
     const placeholderOption = dropdown.querySelector("option[disabled]"); // Get the disabled placeholder option
 
-
     if (selectedOption && selectedOption !== placeholderOption.value) {
       filters.push({ category, option: selectedOption });
     }
   });
-console.log('filters');
-console.log(filters);
+
   return filters;
 }
 async function fetchAndDisplayFilteredSessions(db, filters) {
   try {
-    const sessions = await getSessionsByFilters(db, filters); // Fetch sessions based on filters
-    console.log(sessions.length + "from app-logic");
+    const sessions = await getCombinedSessionsByFilters(db, filters); // Fetch sessions based on filters
 
     displaySessions(sessions, filters);
   } catch (error) {
     console.error("Error fetching and displaying filtered sessions", error);
   }
+}
+function displaySessions(sessions, filters) {
+  const displayContainer = document.querySelector(".view-sessions");
+  clearContainer(displayContainer);
+
+  const sessionsTable = document.createElement("table");
+  sessionsTable.classList.add(
+    "table",
+    "table-striped",
+    "table-sm",
+    "sessions-table"
+  );
+  displayContainer.appendChild(sessionsTable);
+
+  const tableHeadersRow = document.createElement("tr");
+  sessionsTable.appendChild(tableHeadersRow);
+
+  const columnsToDisplay = new Set();
+  let showMore = true;
+  let hasDate = false;
+  let hasDog = false;
+
+  for (const session of sessions) {
+    if ("01_date" in session) {
+      columnsToDisplay.add("01_date");
+      hasDate = true;
+    }
+    if ("02_dog" in session) {
+      columnsToDisplay.add("02_dog");
+      hasDog = true;
+    }
+  }
+  if (!hasDate && !hasDog) {
+    showMore = false;
+  }
+
+  for (const filter of filters) {
+    const category = filter.category;
+    if (!category.includes("date") && !category.includes("dog")) {
+      columnsToDisplay.add(category);
+    }
+  }
+
+  for (const category of columnsToDisplay) {
+    const header = document.createElement("th");
+    header.textContent = beautifyLabel(category);
+    tableHeadersRow.appendChild(header);
+  }
+
+  sessions.forEach((session) => {
+    const tableRow = document.createElement("tr");
+    tableRow.setAttribute("data-session-id", session.id);
+
+    for (const category of columnsToDisplay) {
+      const tableCell = document.createElement("td");
+      tableCell.textContent = session[category] || "";
+      tableRow.appendChild(tableCell);
+    }
+
+    if (showMore) {
+      const showMoreCell = document.createElement("td");
+      const showMoreButton = document.createElement("button");
+      showMoreButton.textContent = "Visa mer";
+      showMoreButton.classList.add(
+        "btn",
+        "btn-sm",
+        "btn-info",
+        "show-more-button"
+      );
+      showMoreButton.addEventListener("click", () => {
+        console.log("click");
+        populateModal(session);
+      });
+      showMoreCell.appendChild(showMoreButton);
+      tableRow.appendChild(showMoreCell);
+    }
+
+    sessionsTable.appendChild(tableRow);
+  });
+}
+
+/*
+function displaySessions(sessions, filters) {
+  const displayContainer = document.querySelector(".view-sessions");
+  clearContainer(displayContainer);
+
+  const sessionsTable = document.createElement("table");
+  sessionsTable.classList.add(
+    "table",
+    "table-striped",
+    "table-sm",
+    "sessions-table"
+  );
+  displayContainer.appendChild(sessionsTable);
+
+  const tableHeadersRow = document.createElement("tr");
+  sessionsTable.appendChild(tableHeadersRow);
+
+  const availableCategories = new Set();
+  for (const session of sessions) {
+    for (const category in session) {
+      if (!category.includes("notes") && !category.includes("id") && !category.includes("distractions") && !category.includes("objects")) {
+        availableCategories.add(category);
+      } else if (Array.isArray(session[category])) {
+        for (const nestedObject of session[category]) {
+          for (const nestedCategory in nestedObject) {
+            if (!nestedCategory.includes("sessionID") && !nestedCategory.includes("id")) {
+              availableCategories.add(nestedCategory);
+            }
+          }
+        }
+      }
+    }
+  }
+  
+  let hasDate = false;
+  let hasDog = false;
+
+  for (const session of sessions) {
+    if ("01_date" in session) {
+      availableCategories.add("01_date");
+      hasDate = true;
+    }
+    if ("02_dog" in session) {
+      availableCategories.add("02_dog");
+      hasDog = true;
+      
+    }
+  }
+  console.log(availableCategories);
+  let noOfFilters = 0;
+  for (const filter of filters) {
+    if (!filter.category.includes("date") && !filter.category.includes("dog")) {
+      const category = filter.category;
+      availableCategories.add(category);
+      noOfFilters++;
+   
+    }
+  }
+  let showMore = true;
+
+  if (!hasDate && !hasDog && noOfFilters === 0) {
+    for (const session of sessions) {
+      for (const category in session) {
+        if (category !== "id") {
+          availableCategories.add(category);
+          
+        }
+      }
+    }
+    showMore = false;
+  }
+
+  availableCategories.forEach((category) => {
+  //  console.log(category);
+    const header = document.createElement("th");
+    header.textContent = beautifyLabel(category);
+    tableHeadersRow.appendChild(header);
+  });
+
+  sessions.forEach((session) => {
+    //console.log(session);
+    const tableRow = document.createElement("tr");
+    tableRow.setAttribute("data-session-id", session.id); // Set a data attribute if you have a unique session identifier
+
+    availableCategories.forEach((category) => {
+    //  console.log(category);
+      const tableCell = document.createElement("td");
+      tableCell.textContent = session[category] || "";
+      tableRow.appendChild(tableCell);
+    });
+
+    // Add 'show more' button
+    if (showMore) {
+      const showMoreCell = document.createElement("td");
+      const showMoreButton = document.createElement("button");
+      showMoreButton.textContent = "Visa mer";
+      showMoreButton.classList.add(
+        "btn",
+        "btn-sm",
+        "btn-info",
+        "show-more-button"
+      );
+      showMoreButton.addEventListener("click", () => {
+        populateModal(session);
+      });
+      showMoreCell.appendChild(showMoreButton);
+      tableRow.appendChild(showMoreCell);
+    }
+
+    sessionsTable.appendChild(tableRow);
+  });
 }
 
 function displaySessions(sessions, filters) {
@@ -616,11 +788,11 @@ function displaySessions(sessions, filters) {
   }
   let noOfFilters = 0;
   for (const filter of filters) {
-    if (filter.category !== "date" && filter.category !== "dog") {
+    if (!filter.category.includes("date") && !filter.category.includes("dog")) {
       const category = filter.category;
       availableCategories.add(category);
       noOfFilters++;
-      console.log(category);
+   
     }
   }
   let showMore = true;
@@ -630,6 +802,7 @@ function displaySessions(sessions, filters) {
       for (const category in session) {
         if (category !== "id") {
           availableCategories.add(category);
+          
         }
       }
     }
@@ -637,16 +810,19 @@ function displaySessions(sessions, filters) {
   }
 
   availableCategories.forEach((category) => {
+    console.log(category);
     const header = document.createElement("th");
     header.textContent = beautifyLabel(category);
     tableHeadersRow.appendChild(header);
   });
 
   sessions.forEach((session) => {
+    console.log(session);
     const tableRow = document.createElement("tr");
     tableRow.setAttribute("data-session-id", session.id); // Set a data attribute if you have a unique session identifier
 
     availableCategories.forEach((category) => {
+    //  console.log(category);
       const tableCell = document.createElement("td");
       tableCell.textContent = session[category] || "";
       tableRow.appendChild(tableCell);
@@ -673,8 +849,9 @@ function displaySessions(sessions, filters) {
     sessionsTable.appendChild(tableRow);
   });
 }
+*/
 function populateModal(session) {
-  const modal = document.querySelector(".modal");
+  const modal = document.querySelector("#viewModal");
   const closeBtn = document.querySelector(".btn-close");
   const modalContainer = document.querySelector(".modal-container");
   const modalTitle = document.querySelector(".modal-title");
@@ -682,8 +859,77 @@ function populateModal(session) {
   modalContainer.innerHTML = "";
   modalTitle.innerHTML = "";
 
+  for (const category in session) {
+    if (Array.isArray(session[category]) && session[category].length === 0) {
+      continue; // Skip creating <ul> and <li> elements for empty array
+    }
+    if (category.includes("date") || category.includes("dog")) {
+      modalTitle.textContent += `${session[category]} \u00A0\u00A0\u00A0\u00A0`;
+    } else if (category !== "id" && session[category] !== "") {
+      const categoryDiv = document.createElement("div");
+      const categoryLabel = document.createElement("label");
+      categoryLabel.className = "category-label";
+      categoryLabel.textContent = beautifyLabel(category);
+      const ul = document.createElement("ul");
+      ul.className = `${category}-ul`;
+      categoryDiv.appendChild(categoryLabel);
+      categoryDiv.appendChild(ul);
+      
+
+      if (typeof session[category] === "object" &&Array.isArray(session[category])) {
+        const nestedArray = session[category];
+        
+        if (category.includes('distractions')) {
+          const li = document.createElement('li');
+          const nestedContentRow =[];
+          for (let i = 0; i < nestedArray.length; i++) {
+            const nestedObject = nestedArray[i];
+            nestedContentRow.push(nestedObject.type);
+          }
+          li.textContent= `${beautifyLabel(category)} ${nestedContentRow.join(", ")}`;
+          ul.appendChild(li);
+        }else{
+        
+        for (let i = 0; i < nestedArray.length; i++) {
+          const li = document.createElement('li');
+          const nestedObject = nestedArray[i];
+          const nestedContentRow = [];
+
+          for (const nestedCategory in nestedObject) {
+            if (
+              nestedObject.hasOwnProperty(nestedCategory) &&
+              !nestedCategory.includes("ID") &&
+              !nestedCategory.includes("id")
+            ) {
+              const nestedValue = nestedObject[nestedCategory];
+              const translatedValue = translate(nestedValue); // Replace with your translating function
+              nestedContentRow.push(
+                `${beautifyLabel(nestedCategory)} ${translatedValue}`
+              );
+              console.log(nestedContentRow);
+              li.textContent = `${nestedContentRow.join(" -- ")}`;
+          ul.appendChild(li);
+            }
+          }
+        }
+      }
+        
+      } else {
+        const translatedValue = translate(session[category]); // Replace with your translating function
+        const li =document.createElement('li');
+        li.textContent=translatedValue;
+        ul.appendChild(li);
+      }
+
+      modalContainer.appendChild(categoryDiv);
+      
+    }
+  }
+
+  /*
   for (category in session) {
-    if (category === "date" || category === "dog") {
+    //console.log(category);
+    if (category.includes("date") || category.includes("dog")) {
       modalTitle.textContent += `${session[category]} \u00A0\u00A0\u00A0\u00A0`;
     } else if (category !== "id" && session[category] !== "") {
       const categoryDiv = document.createElement("div");
@@ -699,7 +945,7 @@ function populateModal(session) {
       categoryDiv.appendChild(contentP);
     }
   }
-
+*/
   modal.style.display = "block";
 
   closeBtn.addEventListener("click", () => {
