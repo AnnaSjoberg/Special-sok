@@ -3,6 +3,10 @@
 document.addEventListener("DOMContentLoaded", async function () {
   const db = await openDatabase(); // Open the database
 
+  if (db) {
+    console.log("db found in DOM");
+  }
+
   const logLink = document.getElementById("logLink");
   const viewLink = document.getElementById("viewLink");
   const loggingSection = document.getElementById("loggingSection");
@@ -16,9 +20,9 @@ document.addEventListener("DOMContentLoaded", async function () {
     clearContainer(logConfirmationContainer);
     loggingForm.reset();
     const dropdowns = loggingForm.querySelectorAll("select");
-  dropdowns.forEach((dropdown) => {
-    dropdown.selectedIndex = 0; // Reset to the placeholder option
-  });
+    dropdowns.forEach((dropdown) => {
+      dropdown.selectedIndex = 0; // Reset to the placeholder option
+    });
   });
   initializeLog(db);
 
@@ -29,9 +33,12 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializeView(db);
   });
 });
-
+/*
 async function initializeLog(db) {
   try {
+    if (db) {
+      console.log("db found in initializeLog");
+    }
     // Show the modal
     const modal = document.getElementById("objectModal");
     const submitButton = document.getElementById("submit-num-objects");
@@ -55,11 +62,14 @@ async function initializeLog(db) {
       );
 
       const logFormContainer = document.querySelector(".log-form"); // Use the correct selector for your container
-      const logConfirmationContainer =document.querySelector(".log-confirmation");
+      const logConfirmationContainer =
+        document.querySelector(".log-confirmation");
       const loggingForm = document.querySelector("#logging-form");
-      const sessionContainer = document.querySelector('.session-container');
-      const objectContainer = document.querySelector('.object-container');
-      const distractionContainer = document.querySelector('.distraction-container');
+      const sessionContainer = document.querySelector(".session-container");
+      const objectContainer = document.querySelector(".object-container");
+      const distractionContainer = document.querySelector(
+        ".distraction-container"
+      );
       const dropdownPromises = [];
 
       clearContainer(logConfirmationContainer);
@@ -73,11 +83,31 @@ async function initializeLog(db) {
         }
       });
 
+      const objectData = [];
       for (let i = 0; i < numObjectsValue; i++) {
-        const indObjectDiv = createObjectDiv(db, objectCategories, i);
-        objectContainer.appendChild(indObjectDiv);
+        const objectDiv = createObjectDiv(db, objectCategories, i);
+        objectContainer.appendChild(objectDiv);
+        const object = {}; // Construct the object data for each object
+        objectCategories.forEach((category) => {
+          const catString = removePrefix(category);
+          const input = objectDiv.querySelector(`#${catString}${i}`);
+          const inputValue = input ? input.value : '';
+          console.log(`Category: ${category}, Input Value: ${inputValue}`);
+          object[category] = input ? input.value : '';
+        });
+        objectData.push(object);
       }
       loggingForm.appendChild(objectContainer);
+
+      await initializeDistractions(db, distractionContainer);
+    const checkedDistractions = distractionContainer.querySelectorAll('input[type="checkbox"]:checked');
+    const distractionData = [];
+    checkedDistractions.forEach((checkbox) => {
+      distractionData.push(checkbox.value);
+    });
+    if (distractionContainer) {
+      loggingForm.appendChild(distractionContainer);
+    }
 
       if (noteCategory) {
         await createDropdown(db, noteCategory, loggingForm);
@@ -95,7 +125,7 @@ async function initializeLog(db) {
 
         saveSessionButton.textContent = "Spara träningspass";
         saveSessionButton.addEventListener("click", () =>
-          validateLoggingForm(db, sessionCategories)
+          validateLoggingForm(db, sessionCategories,objectData,distractionData)
         );
         const clearButton = document.createElement("button");
         clearButton.classList.add("btn", "btn-secondary", "log-clear");
@@ -105,9 +135,135 @@ async function initializeLog(db) {
           loggingForm.reset();
           clearContainer(logConfirmationContainer);
           const dropdowns = logFormContainer.querySelectorAll("select");
-  dropdowns.forEach((dropdown) => {
-    dropdown.selectedIndex = 0; // Reset to the placeholder option
-  });
+          dropdowns.forEach((dropdown) => {
+            dropdown.selectedIndex = 0; // Reset to the placeholder option
+          });
+        });
+
+        buttonDiv.appendChild(saveSessionButton);
+        buttonDiv.appendChild(clearButton);
+
+        logFormContainer.appendChild(buttonDiv);
+        logFormContainer.appendChild(logConfirmationContainer);
+      });
+    });
+  } catch (error) {
+    console.error("Error initializing dropdown menus", error);
+  }
+}
+*/
+async function initializeLog(db) {
+  try {
+    // Show the modal
+    const modal = document.getElementById("objectModal");
+    const submitButton = document.getElementById("submit-num-objects");
+    const numObjectsInput = document.getElementById("num-objects-modal");
+
+    modal.style.display = "block";
+
+    // Handle the submit button
+    submitButton.addEventListener("click", async () => {
+      const numObjectsValue = parseInt(numObjectsInput.value, 10) || 1;
+
+      // Close the modal
+      modal.style.display = "none";
+
+      // Fetch sessionCategories from the database
+      const sessionCategories = await fetchCategories(db, "sessionAttributes");
+      const objectCategories = await fetchCategories(db, "objectAttributes");
+      const distractionCategories = await fetchCategories(
+        db,
+        "distractionAttributes"
+      );
+        
+      const logFormContainer = document.querySelector(".log-form");
+      const logConfirmationContainer =
+        document.querySelector(".log-confirmation");
+      const loggingForm = document.querySelector("#logging-form");
+      const sessionContainer = document.querySelector(".session-container");
+      const objectContainer = document.querySelector(".object-container");
+      const distractionContainer = document.querySelector(
+        ".distraction-container"
+      );
+      const dropdownPromises = [];
+
+      clearContainer(logConfirmationContainer);
+
+      let noteCategory;
+      sessionCategories.forEach(async (category) => {
+        if (category.includes("notes")) {
+          noteCategory = category;
+        } else {
+          await createDropdown(db, category, loggingForm);
+        }
+      });
+
+      
+      for (let i = 0; i < numObjectsValue; i++) {
+        const objectDiv = createObjectDiv(db, objectCategories, i);
+        objectContainer.appendChild(objectDiv);
+      }
+      loggingForm.appendChild(objectContainer);
+
+      await initializeDistractions(db, distractionContainer);
+      if (distractionContainer) {
+        loggingForm.appendChild(distractionContainer);
+      }
+      
+      if (noteCategory) {
+        await createDropdown(db, noteCategory, loggingForm);
+      }
+
+      // Wait for all dropdowns to be created before appending the button
+      Promise.all(dropdownPromises).then((dropdowns) => {
+        dropdowns.forEach((dropdown) => {
+          logFormContainer.appendChild(dropdown);
+        });
+        const buttonDiv = document.createElement("div");
+        buttonDiv.className = "button-div";
+        const saveSessionButton = document.createElement("button");
+        saveSessionButton.classList.add("btn", "btn-success", "log-save");
+
+        saveSessionButton.textContent = "Spara träningspass";
+        saveSessionButton.addEventListener("click", () => {
+          
+          // Extract selected options from dropdowns and checkboxes
+          const objectData = [];
+          const objectDivs = document.querySelectorAll(".object-div");
+          objectDivs.forEach((objectDiv, i) => {
+            console.log('objectCategories inside objectDivs.forEach');
+            console.log(objectCategories);
+            const object = {};
+            objectCategories.forEach((category) => {
+              console.log('objectCategories.forEach((category)');
+              console.log(category);
+              const catString = removePrefix(category);
+              const input = objectDiv.querySelector(`#${catString}${i}`);
+              const inputValue = input ? input.value : '';
+              object[category] = inputValue;
+              console.log('object[category]');
+              console.log(object[category]);
+            });
+            objectData.push(object);
+          });
+
+          const checkedDistractions = distractionContainer.querySelectorAll('input[type="checkbox"]:checked');
+          const distractionData = Array.from(checkedDistractions).map((checkbox) => checkbox.value);
+
+          validateLoggingForm(db, sessionCategories, objectData, distractionData);
+        });
+        
+        const clearButton = document.createElement("button");
+        clearButton.classList.add("btn", "btn-secondary", "log-clear");
+        clearButton.textContent = "Rensa formulär";
+        clearButton.addEventListener("click", () => {
+          // Reset the input fields within the container
+          loggingForm.reset();
+          clearContainer(logConfirmationContainer);
+          const dropdowns = logFormContainer.querySelectorAll("select");
+          dropdowns.forEach((dropdown) => {
+            dropdown.selectedIndex = 0; // Reset to the placeholder option
+          });
         });
 
         buttonDiv.appendChild(saveSessionButton);
@@ -325,7 +481,6 @@ function populateModal(session) {
 }
 
 function clearContainer(container) {
-  
   while (container.firstChild) {
     container.removeChild(container.firstChild);
   }
@@ -355,7 +510,7 @@ async function createDropdown(db, category, loggingForm) {
     logDropdown.id = catString; // Set the id of the logDropdown to the category name
 
     const placeholderOption = document.createElement("option");
-   // placeholderOption.value = "";
+    // placeholderOption.value = "";
     placeholderOption.textContent = beautifyLabel(category);
     placeholderOption.disabled = true;
     placeholderOption.selected = true;
@@ -377,10 +532,10 @@ async function createDropdown(db, category, loggingForm) {
 function createObjectDiv(db, objectCategories, index) {
   // Create a div for an object and initialize the dropdowns
   const indObjectDiv = document.createElement("div");
-  indObjectDiv.className = "ind-object-container";
+  indObjectDiv.className = "object-div";
 
   const label = document.createElement("label");
-  label.textContent = `Gömma ${index+1}:`;
+  label.textContent = `Gömma ${index + 1}:`;
   indObjectDiv.appendChild(label);
 
   objectCategories.forEach((objectCategory) => {
@@ -400,32 +555,81 @@ function createObjectDiv(db, objectCategories, index) {
 
       initializeDropdownOptions(db, objectDropdown, objectCategory);
 
-      if (!objectCategory.includes('found')) {
-        
-      
-      const addButton = createAddNewButton(
-        db,
-        objectCategory,
-        objectDropdown,
-        indCatDiv
-      );
-      indCatDiv.appendChild(addButton);
-    }
-      
-      indObjectDiv.appendChild(indCatDiv);
+      if (!objectCategory.includes("found")) {
+        const addButton = createAddNewButton(
+          db,
+          objectCategory,
+          objectDropdown,
+          indCatDiv
+        );
+        indCatDiv.appendChild(addButton);
+      }
 
+      indObjectDiv.appendChild(indCatDiv);
     }
   });
 
   return indObjectDiv;
 }
-function createAddNewButton(db, category, categoryDropdown, categoryContainer) {
+
+async function initializeDistractions(db, distractionContainer) {
+  try {
+    const options = await fetchOptions(db, "distractions"); // Fetch options from indexedDB
+
+    console.log("inside initializeDistractions");
+
+    //distractionContainer.innerHTML = "";
+
+    
+    const addButton = createAddNewButton(
+      db,
+      "distractions",
+      null,
+      distractionContainer
+    );
+    distractionContainer.appendChild(addButton);
+
+    options.forEach((option, index) => {
+      const checkboxContainer= document.createElement('div');
+
+      const checkboxLabel = document.createElement("label");
+      checkboxLabel.classList.add("checkbox-label");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = option;
+      checkbox.id = `distraction-${option}`;
+
+      const checkboxText = document.createTextNode(option);
+
+      checkboxLabel.appendChild(checkbox);
+      checkboxLabel.appendChild(checkboxText);
+      checkboxContainer.appendChild(checkboxLabel);
+
+      distractionContainer.appendChild(checkboxContainer);
+    });
+
+
+    return distractionContainer;
+  } catch (error) {
+    console.error("Error initializing distractions", error);
+  }
+}
+function createAddNewButton(
+  db,
+  category,
+  categoryDropdown = null,
+  categoryContainer
+) {
+
+  console.log(categoryContainer);
   const addButton = document.createElement("button");
   addButton.classList.add("btn", "btn-warning", "btn-sm");
   addButton.type = "button";
   addButton.textContent = "Lägg till nytt";
 
   addButton.addEventListener("click", () => {
+    
     showAddNewInput(db, category, categoryDropdown, categoryContainer);
   });
 
@@ -437,12 +641,11 @@ async function initializeDropdownOptions(db, dropdown, category) {
     const options = await fetchOptions(db, category); // Fetch options from indexedDB
 
     options.forEach((option) => {
-      let optionString=String(option);
-      
+      let optionString = String(option);
 
       const optionElement = document.createElement("option");
-      if (option===true || option ===false) {
-        optionString=translate(optionString);
+      if (option === true || option === false) {
+        optionString = translate(optionString);
       }
       optionElement.value = option;
       optionElement.textContent = optionString;
@@ -455,11 +658,11 @@ async function initializeDropdownOptions(db, dropdown, category) {
 async function showAddNewInput(
   db,
   category,
-  categoryDropdown,
+  categoryDropdown = null,
   categoryContainer
 ) {
   const catString = removePrefix(category);
-  
+
   const oldInputContainer = document.querySelector(".input-container");
   if (oldInputContainer) {
     oldInputContainer.remove();
@@ -467,7 +670,6 @@ async function showAddNewInput(
 
   const inputContainer = document.createElement("div");
   inputContainer.className = "input-container";
-
 
   const inputField = document.createElement("input");
   inputField.type = "text";
@@ -491,12 +693,36 @@ async function showAddNewInput(
       // Save the new option to the database (implement this function)
       await saveNewOptionToDatabase(category, newOptionValue);
 
-      // Add new option directly to the dropdown
-      const optionElement = document.createElement("option");
-      optionElement.value = newOptionValue;
-      optionElement.textContent = newOptionValue;
-      categoryDropdown.appendChild(optionElement);
-      optionElement.selected = true;
+      if (categoryDropdown) {
+        // Add new option directly to the dropdown
+        const optionElement = document.createElement("option");
+        optionElement.value = newOptionValue;
+        optionElement.textContent = newOptionValue;
+        categoryDropdown.appendChild(optionElement);
+        optionElement.selected = true;
+      } else {
+        const checkboxContainer = document.createElement("div");
+
+      const checkboxLabel = document.createElement("label");
+      checkboxLabel.classList.add("checkbox-label");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.value = newOptionValue;
+      checkbox.id = `distraction-${newOptionValue}`;
+
+      const checkboxText = document.createTextNode(newOptionValue);
+
+      checkboxLabel.appendChild(checkbox);
+      checkboxLabel.appendChild(checkboxText);
+      checkboxContainer.appendChild(checkboxLabel);
+      
+      // Tick the checkbox right away
+      checkbox.checked = true;
+
+      // Append the new container to the distractionContainer
+      categoryContainer.appendChild(checkboxContainer);
+      }
 
       // Clear the input field
       inputField.value = "";
@@ -504,7 +730,7 @@ async function showAddNewInput(
     }
   });
 }
-async function validateLoggingForm(db, categories) {
+async function validateLoggingForm(db, categories, objectData, distractionData) {
   const formData = {};
   const logConfirmationContainer = document.querySelector(".log-confirmation");
   const confirmation = document.createElement("h4");
@@ -512,6 +738,7 @@ async function validateLoggingForm(db, categories) {
   clearContainer(logConfirmationContainer);
 
   logConfirmationContainer.appendChild(confirmation);
+  
 
   try {
     for (const category of categories) {
@@ -524,10 +751,28 @@ async function validateLoggingForm(db, categories) {
         return;
       } else {
         formData[category] = option.value;
+       
       }
     }
+    
+console.log('objectData');
+console.log(objectData);
+    // Validate object data
+    const validObjectData = objectData.every((object) => {
+  //    console.log(object);
+      return Object.values(object).every((value) => {
+        if (typeof value === 'string') {
+          return value.trim() !== ''; // Check for non-empty string after trimming whitespace
+        }
+        return value !== undefined && value !== null; // Check for non-empty non-string values
+      });
+    });
+    if (!validObjectData) {
+      confirmation.textContent = `Vänligen fyll i alla obligatoriska fält för objekten.`;
+      return;
+    }
 
-    await addSessionToDB(db, formData);
+    await addSessionToDB(db, formData, objectData, distractionData);
 
     confirmation.textContent = "Träningspass sparat!";
   } catch (error) {
@@ -540,6 +785,8 @@ async function validateLoggingForm(db, categories) {
     logFormContainer.appendChild(errorDiv);
   }
 }
+
+
 function removePrefix(category) {
   return String(category).substring(String(category).search(/_/) + 1);
 }
@@ -547,72 +794,71 @@ function removePrefix(category) {
 function beautifyLabel(category) {
   let string = removePrefix(category);
   string = string.replace(/_/g, " ");
-  string=translate(string) + ":";
+  string = translate(string) + ":";
   return string.charAt(0).toUpperCase() + string.slice(1);
 }
 function translate(string) {
-  
   switch (string) {
-    case 'dog':
-      string='hund'
-      break;
-  
-    case 'area':
-      string='sökområde'
-      break;
-  
-    case 'environment':
-      string='miljö'
-      break;
-  
-    case 'notes':
-      string='anteckningar'
-      break;
-  
-    case 'date':
-      string='datum'
-      break;
-  
-    case 'waiting time':
-      string='liggtid'
+    case "dog":
+      string = "hund";
       break;
 
-      case 'object':
-      string='gömma'
+    case "area":
+      string = "sökområde";
       break;
 
-      case 'objects':
-      string='gömmor'
+    case "environment":
+      string = "miljö";
       break;
 
-      case 'found':
-      string='hittad'
+    case "notes":
+      string = "anteckningar";
       break;
-  
-      case 'true':
-      string='ja'
+
+    case "date":
+      string = "datum";
       break;
-  
-      case 'false':
-      string='nej'
+
+    case "waiting time":
+      string = "liggtid";
       break;
-  
-      case 'height':
-      string='höjd'
+
+    case "object":
+      string = "gömma";
       break;
-  
-      case 'size':
-      string='storlek'
+
+    case "objects":
+      string = "gömmor";
       break;
-  
-      case 'distractions':
-      string='störningar'
+
+    case "found":
+      string = "hittad";
       break;
-  
-      case 'distraction':
-      string='störning'
+
+    case "true":
+      string = "ja";
       break;
-  
+
+    case "false":
+      string = "nej";
+      break;
+
+    case "height":
+      string = "höjd";
+      break;
+
+    case "size":
+      string = "storlek";
+      break;
+
+    case "distractions":
+      string = "störningar";
+      break;
+
+    case "distraction":
+      string = "störning";
+      break;
+
     default:
       break;
   }

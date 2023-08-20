@@ -1,7 +1,7 @@
 // database.js
 function openDatabase() {
   const DB_NAME = "DogTrainingDB";
-  const DB_VERSION = 12;
+  const DB_VERSION = 15;
   const sessionAttributes = [
     "01_date",
     "02_dog",
@@ -38,17 +38,21 @@ function openDatabase() {
     "03_found": [{ value: true }, { value: false }],
     "04_sessionID": [],
   };
+
   const distractionAttributes = ["01_type", "02_sessionID"];
+
   const initialDistractionOptions = {
     "01_type": [],
     "02_sessionID": [],
-  }
+  };
 
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(DB_NAME, DB_VERSION);
+    console.log("inside promise");
 
     request.onupgradeneeded = function (event) {
       const db = event.target.result;
+      console.log("inside request");
 
       // Create the combined object store for all sessionAttributes
       const sessionAttributesStore = db.createObjectStore("sessionAttributes", {
@@ -78,10 +82,14 @@ function openDatabase() {
       const objectAttributesStore = db.createObjectStore("objectAttributes", {
         keyPath: "name",
       });
+      console.log("Create the combined object store for all objectAttributes");
 
       // Add initial objectAttributes to the combined object store
       objectAttributes.forEach((objectAttribute) => {
         objectAttributesStore.add({ name: objectAttribute });
+        console.log(
+          "Add initial objectAttributes to the combined object store"
+        );
       });
 
       // Create separate object stores for objectAttributes options
@@ -90,35 +98,61 @@ function openDatabase() {
           keyPath: "id",
           autoIncrement: true,
         });
+        console.log(
+          "Create separate object stores for objectAttributes options"
+        );
 
         // Add initial object options to the category object store
         const objectOptions = initialObjectOptions[objectAttribute] || [];
         objectOptions.forEach((objectOption) => {
           objectAttributeStore.add(objectOption);
+
+          console.log(
+            " Add initial object options to the category object store"
+          );
         });
       });
 
       // Create the combined object store for all distractionAttributes
-      const distractionAttributesStore = db.createObjectStore("distractionAttributes", {
-        keyPath: "name",
-      });
+      const distractionAttributesStore = db.createObjectStore(
+        "distractionAttributes",
+        {
+          keyPath: "name",
+        }
+      );
+      console.log(
+        " Create the combined object store for all distractionAttributes"
+      );
 
       // Add initial distractionAttributes to the combined object store
       distractionAttributes.forEach((distractionAttribute) => {
         distractionAttributesStore.add({ name: distractionAttribute });
+        console.log(
+          "Add initial distractionAttributes to the combined object store"
+        );
       });
 
       // Create separate object stores for distractionAttributes options
       distractionAttributes.forEach((distractionAttribute) => {
-        const distractionAttributeStore = db.createObjectStore(distractionAttribute, {
-          keyPath: "id",
-          autoIncrement: true,
-        });
-
+        const distractionAttributeStore = db.createObjectStore(
+          distractionAttribute,
+          {
+            keyPath: "id",
+            autoIncrement: true,
+          }
+        );
+        console.log(
+          " Create separate object stores for distractionAttributes options"
+        );
         // Add initial distraction options to the attribute object store
-        const distractionOptions = initialDistractionOptions[distractionAttribute] || [];
+        const distractionOptions =
+          initialDistractionOptions[distractionAttribute] || [];
         distractionOptions.forEach((distractionOption) => {
           distractionAttributeStore.add(distractionOption);
+
+          console.log(
+            " Add initial distraction options to the attribute object store"
+          );
         });
       });
 
@@ -127,6 +161,7 @@ function openDatabase() {
         keyPath: "id",
         autoIncrement: true,
       });
+      console.log(" Create the object store for sessions");
       // Modify category names to remove numeric prefixes
       const sessionKeyPaths = sessionAttributes.map((category) =>
         category.replace(/^\d+_/g, "")
@@ -136,6 +171,8 @@ function openDatabase() {
       sessionKeyPaths.forEach((keyPath) => {
         sessionStore.createIndex(keyPath, keyPath, { unique: false });
       });
+
+      console.log(" Use the modified key paths in the createIndex method");
       // Create the object store for objects
       const objectStore = db.createObjectStore("objects", {
         keyPath: "id",
@@ -150,6 +187,25 @@ function openDatabase() {
       objectKeyPaths.forEach((keyPath) => {
         objectStore.createIndex(keyPath, keyPath, { unique: false });
       });
+
+      // Create the object store for distractions
+      const distractionStore = db.createObjectStore("distractions", {
+        keyPath: "id",
+        autoIncrement: true,
+      });
+      console.log(" Create the object store for distractions");
+      // Modify category names to remove numeric prefixes
+      const distractionKeyPaths = distractionAttributes.map((category) =>
+        category.replace(/^\d+_/g, "")
+      );
+
+      // Use the modified key paths in the createIndex method
+      distractionKeyPaths.forEach((keyPath) => {
+        distractionStore.createIndex(keyPath, keyPath, { unique: false });
+      });
+      console.log(
+        "Use the modified key paths in the createIndex method DISTRACTION"
+      );
     };
 
     request.onsuccess = function (event) {
@@ -161,6 +217,7 @@ function openDatabase() {
     };
   });
 }
+//sessionID
 
 async function fetchCategories(db, objectStoreName) {
   return new Promise((resolve, reject) => {
@@ -170,7 +227,9 @@ async function fetchCategories(db, objectStoreName) {
 
     getRequest.onsuccess = function (event) {
       const categoryEntries = event.target.result || [];
-      const categories = categoryEntries.map((entry) => entry.name);
+      const categories = categoryEntries
+        .map((entry) => entry.name)
+        .filter((category) => !category.includes("sessionID"));
       resolve(categories);
     };
 
@@ -179,7 +238,6 @@ async function fetchCategories(db, objectStoreName) {
     };
   });
 }
-
 
 async function fetchOptions(db, attribute) {
   return new Promise((resolve, reject) => {
@@ -198,10 +256,12 @@ async function fetchOptions(db, attribute) {
   });
 }
 
-
-async function addSessionToDB(db, session, objects, distractions) {
+async function addSessionToDB(db, session, objects, distractionData) {
   return new Promise((resolve, reject) => {
-    const transaction = db.transaction(["sessions", "objects", "distractions"], "readwrite");
+    const transaction = db.transaction(
+      ["sessions", "objects", "distractions"],
+      "readwrite"
+    );
     const sessionStore = transaction.objectStore("sessions");
     const objectStore = transaction.objectStore("objects");
     const distractionStore = transaction.objectStore("distractions");
@@ -210,24 +270,36 @@ async function addSessionToDB(db, session, objects, distractions) {
 
     sessionRequest.onsuccess = async function (event) {
       const sessionID = event.target.result;
-
+      //console.log(objects);
       // Save sessionID for objects and distractions
-      objects.forEach(object => {
+      objects.forEach((object) => {
+        //console.log(object);
         object.sessionID = sessionID;
+        
       });
-      distractions.forEach(distraction => {
-        distraction.sessionID = sessionID;
-      });
+        // Create distractions based on distractionData
+        const distractions = distractionData.map((distractionType) => ({
+          type: distractionType,
+          sessionID: sessionID,
+        }));
 
       // Save objects and distractions in their respective stores
-      const objectSavePromises = objects.map(object => objectStore.add(object));
-      const distractionSavePromises = distractions.map(distraction => distractionStore.add(distraction));
+      const objectSavePromises = objects.map((object) =>
+        objectStore.add(object)
+      );
+      const distractionSavePromises = distractions.map((distraction) =>
+      distractionStore.add(distraction)
+    );
 
-      const allSavePromises = [...objectSavePromises, ...distractionSavePromises];
+
+      const allSavePromises = [
+        ...objectSavePromises,
+        ...distractionSavePromises,
+      ];
 
       Promise.all(allSavePromises)
         .then(() => resolve(sessionID))
-        .catch(error => reject(error));
+        .catch((error) => reject(error));
     };
 
     sessionRequest.onerror = function (event) {
@@ -235,7 +307,6 @@ async function addSessionToDB(db, session, objects, distractions) {
     };
   });
 }
-
 
 function getAllTrainingSessions(db) {
   return new Promise((resolve, reject) => {
@@ -275,11 +346,9 @@ async function getSessionsByFilters(db, filters) {
   return filteredSessions;
 }
 
-
 async function saveNewOptionToDatabase(attribute, option) {
   // Save the new option to the database
   try {
-
     const db = await openDatabase(); // Open the database
     const transaction = db.transaction(attribute, "readwrite");
     const attributeStore = transaction.objectStore(attribute);
