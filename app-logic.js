@@ -149,6 +149,7 @@ async function initializeLog(db) {
           dropdowns.forEach((dropdown) => {
             dropdown.selectedIndex = 0; // Reset to the placeholder option
           });
+          
         });
 
         buttonDiv.appendChild(saveSessionButton);
@@ -886,7 +887,7 @@ function populateModal(session) {
             const nestedObject = nestedArray[i];
             nestedContentRow.push(nestedObject.type);
           }
-          li.textContent= `${beautifyLabel(category)} ${nestedContentRow.join(", ")}`;
+          li.textContent= `${nestedContentRow.join(", ")}`;
           ul.appendChild(li);
         }else{
         
