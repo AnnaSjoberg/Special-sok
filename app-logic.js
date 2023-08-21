@@ -9,18 +9,17 @@ document.addEventListener("DOMContentLoaded", async function () {
   const viewingSection = document.getElementById("viewingSection");
   const logConfirmationContainer = document.querySelector(".log-confirmation");
   const loggingForm = document.getElementById("logging-form");
-
+  
+  createObjectModal(db);
+  
   logLink.addEventListener("click", function () {
     loggingSection.style.display = "block";
     viewingSection.style.display = "none";
-    clearContainer(logConfirmationContainer);
-    loggingForm.reset();
-    const dropdowns = loggingForm.querySelectorAll("select");
-    dropdowns.forEach((dropdown) => {
-      dropdown.selectedIndex = 0; // Reset to the placeholder option
-    });
+   // clearLogFormContainer();
+    createObjectModal(db);
+    console.log('click click');
   });
-  initializeLog(db);
+  
 
   viewLink.addEventListener("click", function () {
     loggingSection.style.display = "none";
@@ -29,78 +28,101 @@ document.addEventListener("DOMContentLoaded", async function () {
     initializeView(db);
   });
 });
-async function createObjectModal(params) {
-  
+async function createObjectModal(db) {
+  const modal = document.getElementById("objectModal");
+  const submitButton = document.getElementById("submit-num-objects");
+  const numObjectsInput = document.getElementById("num-objects-modal");
+  const loggingSection = document.getElementById("loggingSection");
+
+  modal.style.display = "block";
+
+  // Handle the submit button
+  submitButton.addEventListener("click", async () => {
+    const numObjectsValue = parseInt(numObjectsInput.value, 10) || 1;
+
+    // Close the modal and show the logging section
+    modal.style.display = "none";
+    loggingSection.style.display = "block";
+
+    // Initialize the logging section with the specified number of objects
+    initializeLog(db, numObjectsValue);
+  });
 }
-async function initializeLog(db) {
+async function initializeLog(db, numObjectsValue) {
   try {
-    // Show the modal
-    const modal = document.getElementById("objectModal");
-    const submitButton = document.getElementById("submit-num-objects");
-    const numObjectsInput = document.getElementById("num-objects-modal");
-
-    modal.style.display = "block";
-
-    // Handle the submit button
-    submitButton.addEventListener("click", async () => {
-      const numObjectsValue = parseInt(numObjectsInput.value, 10) || 1;
-
-      // Close the modal
-      modal.style.display = "none";
-
+    
       // Fetch all categories from the database
       const sessionCategories = await fetchCategories(db, "sessionAttributes");
       const objectCategories = await fetchCategories(db, "objectAttributes");
-      const distractionCategories = await fetchCategories(
-        db,
-        "distractionAttributes"
-      );
+      const distractionCategories = await fetchCategories(db,"distractionAttributes");
 
       const logFormContainer = document.querySelector(".log-form");
-      const logConfirmationContainer =
-        document.querySelector(".log-confirmation");
+      const logConfirmationContainer =document.querySelector(".log-confirmation");
       const loggingForm = document.querySelector("#logging-form");
+      
+      clearContainer(logConfirmationContainer);
+      clearLogFormContainer();
+    loggingForm.reset();
+    const dropdowns = loggingForm.querySelectorAll("select");
+    dropdowns.forEach((dropdown) => {
+      dropdown.selectedIndex = 0; // Reset to the placeholder option
+    });
+      
       const sessionContainer = document.querySelector(".session-container");
       const objectContainer = document.querySelector(".object-container");
-      const distractionContainer = document.querySelector(
-        ".distraction-container"
-      );
+      const distractionContainer = document.querySelector(".distraction-container");
+      const noteContainer = document.querySelector(".note-container");
+      
+      loggingForm.appendChild(sessionContainer);
+      loggingForm.appendChild(noteContainer);
+      loggingForm.appendChild(objectContainer);
+     
+      
       const dropdownPromises = [];
-
-      clearContainer(logConfirmationContainer);
 
       let noteCategory;
       sessionCategories.forEach(async (category) => {
         if (category.includes("notes")) {
           noteCategory = category;
         } else {
-          await createLogDropdowns(db, category, loggingForm);
+          await createLogDropdowns(db, category, sessionContainer);
         }
       });
-
+    
       for (let i = 0; i < numObjectsValue; i++) {
         const objectDiv = createObjectDiv(db, objectCategories, i);
         objectContainer.appendChild(objectDiv);
       }
-      loggingForm.appendChild(objectContainer);
+      
 
+      console.log(loggingForm);
+      
       distractionCategories.forEach(async (category) => {
+        
         if (category.includes("type")) {
+          
+          
           await initializeDistractions(db, distractionContainer, category);
+          console.log(distractionContainer);
           if (distractionContainer) {
+            console.log(loggingForm);
             loggingForm.appendChild(distractionContainer);
+            console.log(distractionContainer);
+            console.log(loggingForm);
           }
         }
       });
 
       if (noteCategory) {
-        await createLogDropdowns(db, noteCategory, loggingForm);
+        const notesContainer = createNotesContainer();
+        noteContainer.appendChild(notesContainer);
       }
+      //loggingForm.appendChild(noteContainer);
 
       // Wait for all dropdowns to be created before appending the button
       Promise.all(dropdownPromises).then((dropdowns) => {
         dropdowns.forEach((dropdown) => {
-          logFormContainer.appendChild(dropdown);
+          sessionContainer.appendChild(dropdown);
         });
         const buttonDiv = document.createElement("div");
         buttonDiv.className = "button-div";
@@ -142,14 +164,8 @@ async function initializeLog(db) {
         clearButton.classList.add("btn", "btn-secondary", "log-clear");
         clearButton.textContent = "Rensa formulär";
         clearButton.addEventListener("click", () => {
-          // Reset the input fields within the container
-          loggingForm.reset();
-          clearContainer(logConfirmationContainer);
-          const dropdowns = logFormContainer.querySelectorAll("select");
-          dropdowns.forEach((dropdown) => {
-            dropdown.selectedIndex = 0; // Reset to the placeholder option
-          });
-          
+          console.log('click');
+         createObjectModal(db);
         });
 
         buttonDiv.appendChild(saveSessionButton);
@@ -158,13 +174,13 @@ async function initializeLog(db) {
         logFormContainer.appendChild(buttonDiv);
         logFormContainer.appendChild(logConfirmationContainer);
       });
-    });
+    
   } catch (error) {
     console.error("Error initializing dropdown menus", error);
   }
 }
 
-async function createLogDropdowns(db, category, loggingForm) {
+async function createLogDropdowns(db, category, sessionContainer) {
   const categoryContainer = document.createElement("div");
   const catString = removePrefix(category);
   categoryContainer.className = `${catString}Container`;
@@ -205,7 +221,7 @@ async function createLogDropdowns(db, category, loggingForm) {
     categoryContainer.appendChild(logDropdown);
     categoryContainer.appendChild(addButton);
   }
-  loggingForm.appendChild(categoryContainer);
+  sessionContainer.appendChild(categoryContainer);
 }
 function createObjectDiv(db, objectCategories, index) {
   // Create a div for an object and initialize the dropdowns
@@ -255,6 +271,12 @@ function createObjectDiv(db, objectCategories, index) {
 async function initializeDistractions(db, distractionContainer, category) {
   try {
     const options = await fetchOptions(db, category); // Fetch options from indexedDB
+console.log(distractionContainer);
+    if (distractionContainer) {
+      distractionContainer.innerHTML="";
+      console.log('if');
+      console.log(distractionContainer);
+    }
 
     const addButton = createAddNewButton(
       db,
@@ -283,11 +305,22 @@ async function initializeDistractions(db, distractionContainer, category) {
 
       distractionContainer.appendChild(checkboxContainer);
     });
-
     return distractionContainer;
   } catch (error) {
     console.error("Error initializing distractions", error);
   }
+}
+function createNotesContainer() {
+  const noteContainer = document.createElement("div");
+  noteContainer.className = "note-container";
+
+  const notesTextArea = document.createElement("textarea");
+  notesTextArea.rows = 4;
+  notesTextArea.placeholder = "Anteckningar (valfri)";
+  notesTextArea.className = "note-area";
+  noteContainer.appendChild(notesTextArea);
+
+  return noteContainer;
 }
 function createAddNewButton(
   db,
@@ -487,19 +520,7 @@ async function initializeView(db) {
         viewCategoryContainers.push(viewCategoryContainer);
       }
     });
-    /*
-    distractionCategories.forEach(async (category) => {
-      if (!category.includes("date") && !category.includes("notes")) {
-        const viewCategoryContainer = createViewDropdowns(
-          db,
-          category,
-          displayContainer
-        );
-        filterContainer.appendChild(viewCategoryContainer);
-        viewCategoryContainers.push(viewCategoryContainer);
-      }
-    });
-*/
+
     const filterButton = document.createElement("button");
     filterButton.classList.add("btn", "btn-primary");
     filterButton.textContent = "Filtrera och visa";
@@ -633,7 +654,7 @@ function displaySessions(sessions, filters) {
         "show-more-button"
       );
       showMoreButton.addEventListener("click", () => {
-        console.log("click");
+       
         populateModal(session);
       });
       showMoreCell.appendChild(showMoreButton);
@@ -643,214 +664,6 @@ function displaySessions(sessions, filters) {
     sessionsTable.appendChild(tableRow);
   });
 }
-
-/*
-function displaySessions(sessions, filters) {
-  const displayContainer = document.querySelector(".view-sessions");
-  clearContainer(displayContainer);
-
-  const sessionsTable = document.createElement("table");
-  sessionsTable.classList.add(
-    "table",
-    "table-striped",
-    "table-sm",
-    "sessions-table"
-  );
-  displayContainer.appendChild(sessionsTable);
-
-  const tableHeadersRow = document.createElement("tr");
-  sessionsTable.appendChild(tableHeadersRow);
-
-  const availableCategories = new Set();
-  for (const session of sessions) {
-    for (const category in session) {
-      if (!category.includes("notes") && !category.includes("id") && !category.includes("distractions") && !category.includes("objects")) {
-        availableCategories.add(category);
-      } else if (Array.isArray(session[category])) {
-        for (const nestedObject of session[category]) {
-          for (const nestedCategory in nestedObject) {
-            if (!nestedCategory.includes("sessionID") && !nestedCategory.includes("id")) {
-              availableCategories.add(nestedCategory);
-            }
-          }
-        }
-      }
-    }
-  }
-  
-  let hasDate = false;
-  let hasDog = false;
-
-  for (const session of sessions) {
-    if ("01_date" in session) {
-      availableCategories.add("01_date");
-      hasDate = true;
-    }
-    if ("02_dog" in session) {
-      availableCategories.add("02_dog");
-      hasDog = true;
-      
-    }
-  }
-  console.log(availableCategories);
-  let noOfFilters = 0;
-  for (const filter of filters) {
-    if (!filter.category.includes("date") && !filter.category.includes("dog")) {
-      const category = filter.category;
-      availableCategories.add(category);
-      noOfFilters++;
-   
-    }
-  }
-  let showMore = true;
-
-  if (!hasDate && !hasDog && noOfFilters === 0) {
-    for (const session of sessions) {
-      for (const category in session) {
-        if (category !== "id") {
-          availableCategories.add(category);
-          
-        }
-      }
-    }
-    showMore = false;
-  }
-
-  availableCategories.forEach((category) => {
-  //  console.log(category);
-    const header = document.createElement("th");
-    header.textContent = beautifyLabel(category);
-    tableHeadersRow.appendChild(header);
-  });
-
-  sessions.forEach((session) => {
-    //console.log(session);
-    const tableRow = document.createElement("tr");
-    tableRow.setAttribute("data-session-id", session.id); // Set a data attribute if you have a unique session identifier
-
-    availableCategories.forEach((category) => {
-    //  console.log(category);
-      const tableCell = document.createElement("td");
-      tableCell.textContent = session[category] || "";
-      tableRow.appendChild(tableCell);
-    });
-
-    // Add 'show more' button
-    if (showMore) {
-      const showMoreCell = document.createElement("td");
-      const showMoreButton = document.createElement("button");
-      showMoreButton.textContent = "Visa mer";
-      showMoreButton.classList.add(
-        "btn",
-        "btn-sm",
-        "btn-info",
-        "show-more-button"
-      );
-      showMoreButton.addEventListener("click", () => {
-        populateModal(session);
-      });
-      showMoreCell.appendChild(showMoreButton);
-      tableRow.appendChild(showMoreCell);
-    }
-
-    sessionsTable.appendChild(tableRow);
-  });
-}
-
-function displaySessions(sessions, filters) {
-  const displayContainer = document.querySelector(".view-sessions");
-  clearContainer(displayContainer);
-
-  const sessionsTable = document.createElement("table");
-  sessionsTable.classList.add(
-    "table",
-    "table-striped",
-    "table-sm",
-    "sessions-table"
-  );
-  displayContainer.appendChild(sessionsTable);
-
-  const tableHeadersRow = document.createElement("tr");
-  sessionsTable.appendChild(tableHeadersRow);
-
-  const availableCategories = new Set();
-  let hasDate = false;
-  let hasDog = false;
-
-  for (const session of sessions) {
-    if ("01_date" in session) {
-      availableCategories.add("01_date");
-      hasDate = true;
-    }
-    if ("02_dog" in session) {
-      availableCategories.add("02_dog");
-      hasDog = true;
-    }
-  }
-  let noOfFilters = 0;
-  for (const filter of filters) {
-    if (!filter.category.includes("date") && !filter.category.includes("dog")) {
-      const category = filter.category;
-      availableCategories.add(category);
-      noOfFilters++;
-   
-    }
-  }
-  let showMore = true;
-
-  if (!hasDate && !hasDog && noOfFilters === 0) {
-    for (const session of sessions) {
-      for (const category in session) {
-        if (category !== "id") {
-          availableCategories.add(category);
-          
-        }
-      }
-    }
-    showMore = false;
-  }
-
-  availableCategories.forEach((category) => {
-    console.log(category);
-    const header = document.createElement("th");
-    header.textContent = beautifyLabel(category);
-    tableHeadersRow.appendChild(header);
-  });
-
-  sessions.forEach((session) => {
-    console.log(session);
-    const tableRow = document.createElement("tr");
-    tableRow.setAttribute("data-session-id", session.id); // Set a data attribute if you have a unique session identifier
-
-    availableCategories.forEach((category) => {
-    //  console.log(category);
-      const tableCell = document.createElement("td");
-      tableCell.textContent = session[category] || "";
-      tableRow.appendChild(tableCell);
-    });
-
-    // Add 'show more' button
-    if (showMore) {
-      const showMoreCell = document.createElement("td");
-      const showMoreButton = document.createElement("button");
-      showMoreButton.textContent = "Visa mer";
-      showMoreButton.classList.add(
-        "btn",
-        "btn-sm",
-        "btn-info",
-        "show-more-button"
-      );
-      showMoreButton.addEventListener("click", () => {
-        populateModal(session);
-      });
-      showMoreCell.appendChild(showMoreButton);
-      tableRow.appendChild(showMoreCell);
-    }
-
-    sessionsTable.appendChild(tableRow);
-  });
-}
-*/
 function populateModal(session) {
   const modal = document.querySelector("#viewModal");
   const closeBtn = document.querySelector(".btn-close");
@@ -926,27 +739,6 @@ function populateModal(session) {
       
     }
   }
-
-  /*
-  for (category in session) {
-    //console.log(category);
-    if (category.includes("date") || category.includes("dog")) {
-      modalTitle.textContent += `${session[category]} \u00A0\u00A0\u00A0\u00A0`;
-    } else if (category !== "id" && session[category] !== "") {
-      const categoryDiv = document.createElement("div");
-      const categoryLabel = document.createElement("label");
-      categoryLabel.className = "category-label";
-      categoryLabel.textContent = beautifyLabel(category);
-      const contentP = document.createElement("p");
-      contentP.className = "content-p";
-      contentP.textContent = session[category];
-
-      modalContainer.appendChild(categoryDiv);
-      categoryDiv.appendChild(categoryLabel);
-      categoryDiv.appendChild(contentP);
-    }
-  }
-*/
   modal.style.display = "block";
 
   closeBtn.addEventListener("click", () => {
@@ -957,6 +749,20 @@ function populateModal(session) {
 function clearContainer(container) {
   while (container.firstChild) {
     container.removeChild(container.firstChild);
+  }
+}
+function clearLogFormContainer() {
+  const logFormContainer = document.querySelector(".log-form");
+  const dynamicElements = logFormContainer.querySelectorAll(".session-container, .object-container, .distraction-container, .note-container");
+  
+  dynamicElements.forEach((element) => {    
+    element.innerHTML = ''; // Clear the content of each dynamic element
+  });
+  
+  const buttonDiv = document.querySelector('.button-div');
+  if (buttonDiv) {
+    
+    logFormContainer.removeChild(buttonDiv);  
   }
 }
 

@@ -21,31 +21,40 @@
       <div class="container-fluid navbar-div">
         <!-- Links -->
         <ul class="navbar navbar-buttons">
-          <button id="logLink" class="btn text-bg-dark">Lägg till träningspass</button>
-          <button id="viewLink" class="btn text-bg-dark">Visa träningspass</button>
+          <button id="logLink" class="btn text-bg-dark">
+            Lägg till träningspass
+          </button>
+          <button id="viewLink" class="btn text-bg-dark">
+            Visa träningspass
+          </button>
         </ul>
       </div>
     </nav>
     <section id="loggingSection">
       <!-- Logging form and elements go here -->
-      
+
       <div id="objectModal" class="modal">
         <div class="modal-content">
           <span class="close">&times;</span>
           <label for="num-objects-modal">Antal gömmor: </label>
-          <input type="number" id="num-objects-modal" min="1" value="1">
+          <input type="number" id="num-objects-modal" min="1" value="1" />
           <button id="submit-num-objects">Submit</button>
         </div>
       </div>
-      
+
       <div class="container">
         <h1>Registrera ett träningspass</h1>
         <div class="log-form container">
           <form id="logging-form" class="form">
             <div class="input-container"></div>
-            <div class="session-container"></div>
+            <div class="session-container">
+              <h5>Övergripande</h5>
+            </div>
             <div class="object-container">
               <h5>Gömmor</h5>
+            </div>
+            <div class="note-container">
+              <h5>Anteckningar</h5>
             </div>
             <div class="distraction-container">
               <h5>Störningar</h5>
@@ -68,9 +77,9 @@
         </div>
       </div>
 
-      <div class="modal  modal-dialog-scrollable" id="viewModal">
+      <div class="modal modal-dialog-scrollable" id="viewModal">
         <div class="modal-content">
-          <div class="modal-header  bg-light">
+          <div class="modal-header bg-light">
             <h4 class="modal-title"></h4>
             <button
               type="button"
@@ -84,7 +93,7 @@
       </div>
     </section>
     <footer class="footer bg-secondary text-white">
-      <p class="footer-text">Senast uppdaterad: 2023-08-17 </p>
+      <p class="footer-text">Senast uppdaterad: 2023-08-17</p>
       <p class="footer-text">Copyright &copy; 2023 - Anna Sjöberg</p>
     </footer>
   </body>
