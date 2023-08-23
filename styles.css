@@ -1,22 +1,19 @@
+#welcomeSection {
+  background-color: #ffa07a7e;
+}
+
 #loggingSection {
-    background-color: lightgoldenrodyellow;
+    background-color: #fafad2;
 }
 #viewingSection {
-    background-color: lightcyan;
+    background-color: #e0ffff;
 }
-/*
-#logLink, #viewLink {
-    margin-left: 15px;
-    margin-right: 15px;
+.welcome-container{
+  text-align: center;
 }
-.navbar-div {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 20px;
-  
+.welcome-container img {
+padding: 20px;
 }
-*/
 .navbar-buttons {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -44,12 +41,14 @@
     padding: 5px;
     margin: 5px;
   }
+  .log-form h5 {
+    padding-top: 1em;
+  }
   .notesContainer {
     display: flex;
     flex-direction: column;
     align-items: flex-start;
 }
-
 .notesContainer label {
     align-self: flex-start;
 }
@@ -61,11 +60,6 @@
     
   }
   .button-div {
-   /* display: flex;
-    justify-content: space-evenly;
-    align-items: center;
-    padding: 20px;
-  */
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px; /* Adjust this value as needed */
@@ -88,6 +82,13 @@
   width: 100%;
   height: 100%;
   background-color: rgba(0, 0, 0, 0.5);
+}
+
+#notes-ul {
+  list-style-type: none;
+  margin-left: 0;
+  padding-left: 0;
+
 }
 
 .modal-content{

@@ -3,18 +3,22 @@
 document.addEventListener("DOMContentLoaded", async function () {
   const db = await openDatabase(); // Open the database
 
-  const logLink = document.getElementById("logLink");
-  const viewLink = document.getElementById("viewLink");
+  const welcomeSection = document.getElementById("welcomeSection");
   const loggingSection = document.getElementById("loggingSection");
   const viewingSection = document.getElementById("viewingSection");
+  const logLink = document.getElementById("logLink");
+  const viewLink = document.getElementById("viewLink");
   const logConfirmationContainer = document.querySelector(".log-confirmation");
   const loggingForm = document.getElementById("logging-form");
   
-  createObjectModal(db);
+ welcomeSection.style.display="block";
+ loggingSection.style.display="none";
+ viewingSection.style.display="none";
   
   logLink.addEventListener("click", function () {
     loggingSection.style.display = "block";
     viewingSection.style.display = "none";
+    welcomeSection.style.display = "none";
    // clearLogFormContainer();
     createObjectModal(db);
     console.log('click click');
@@ -22,8 +26,9 @@ document.addEventListener("DOMContentLoaded", async function () {
   
 
   viewLink.addEventListener("click", function () {
-    loggingSection.style.display = "none";
     viewingSection.style.display = "block";
+    loggingSection.style.display = "none";
+    welcomeSection.style.display = "none";
 
     initializeView(db);
   });
@@ -69,24 +74,22 @@ async function initializeLog(db, numObjectsValue) {
     });
       
       const sessionContainer = document.querySelector(".session-container");
+      const sessionHead = document.createElement('h5');
+      sessionHead.textContent="Övergripande";
+      sessionContainer.appendChild(sessionHead);
       const objectContainer = document.querySelector(".object-container");
-      const distractionContainer = document.querySelector(".distraction-container");
-      const noteContainer = document.querySelector(".note-container");
-      
+      const objectHead = document.createElement('h5');
+      objectHead.textContent="Gömmor";
+      objectContainer.appendChild(objectHead);
+      const distractionContainer = document.querySelector(".distraction-container");      
       loggingForm.appendChild(sessionContainer);
-      loggingForm.appendChild(noteContainer);
       loggingForm.appendChild(objectContainer);
      
-      
       const dropdownPromises = [];
 
-      let noteCategory;
       sessionCategories.forEach(async (category) => {
-        if (category.includes("notes")) {
-          noteCategory = category;
-        } else {
           await createLogDropdowns(db, category, sessionContainer);
-        }
+  
       });
     
       for (let i = 0; i < numObjectsValue; i++) {
@@ -94,32 +97,19 @@ async function initializeLog(db, numObjectsValue) {
         objectContainer.appendChild(objectDiv);
       }
       
-
-      console.log(loggingForm);
-      
       distractionCategories.forEach(async (category) => {
         
-        if (category.includes("type")) {
-          
-          
+        if (category.includes("type")) {         
           await initializeDistractions(db, distractionContainer, category);
-          console.log(distractionContainer);
+          
           if (distractionContainer) {
-            console.log(loggingForm);
+            
             loggingForm.appendChild(distractionContainer);
-            console.log(distractionContainer);
-            console.log(loggingForm);
+            
           }
         }
       });
 
-      if (noteCategory) {
-        const notesContainer = createNotesContainer();
-        noteContainer.appendChild(notesContainer);
-      }
-      //loggingForm.appendChild(noteContainer);
-
-      // Wait for all dropdowns to be created before appending the button
       Promise.all(dropdownPromises).then((dropdowns) => {
         dropdowns.forEach((dropdown) => {
           sessionContainer.appendChild(dropdown);
@@ -164,7 +154,6 @@ async function initializeLog(db, numObjectsValue) {
         clearButton.classList.add("btn", "btn-secondary", "log-clear");
         clearButton.textContent = "Rensa formulär";
         clearButton.addEventListener("click", () => {
-          console.log('click');
          createObjectModal(db);
         });
 
@@ -181,6 +170,7 @@ async function initializeLog(db, numObjectsValue) {
 }
 
 async function createLogDropdowns(db, category, sessionContainer) {
+  
   const categoryContainer = document.createElement("div");
   const catString = removePrefix(category);
   categoryContainer.className = `${catString}Container`;
@@ -229,10 +219,10 @@ function createObjectDiv(db, objectCategories, index) {
   indObjectDiv.className = "object-div";
   indObjectDiv.id = `ind-object-div${index}`;
 
-  const label = document.createElement("label");
-  label.textContent = `Gömma ${index + 1}:`;
+  const numberP = document.createElement("h6");
+  numberP.textContent = `${index + 1}.`;
 
-  indObjectDiv.appendChild(label);
+  indObjectDiv.appendChild(numberP);
 
   objectCategories.forEach((objectCategory) => {
     if (!objectCategory.includes("sessionID")) {
@@ -271,23 +261,26 @@ function createObjectDiv(db, objectCategories, index) {
 async function initializeDistractions(db, distractionContainer, category) {
   try {
     const options = await fetchOptions(db, category); // Fetch options from indexedDB
-console.log(distractionContainer);
-    if (distractionContainer) {
-      distractionContainer.innerHTML="";
-      console.log('if');
-      console.log(distractionContainer);
-    }
 
-    const addButton = createAddNewButton(
-      db,
-      category,
-      null,
-      distractionContainer
-    );
-    distractionContainer.appendChild(addButton);
+    if (distractionContainer) {
+      distractionContainer.innerHTML="";  
+    }
+    const distractionHead = document.createElement('h5');
+      distractionHead.textContent="Störningar";
+      distractionContainer.appendChild(distractionHead);
+     const checkboxContainer = document.createElement("div");
+     
+     const addButton = createAddNewButton(
+       db,
+       category,
+       null,
+       distractionContainer
+       );
+       distractionContainer.appendChild(addButton);
+       distractionContainer.appendChild(checkboxContainer); 
 
     options.forEach((option, index) => {
-      const checkboxContainer = document.createElement("div");
+      const indCheckboxContainer = document.createElement("div");
 
       const checkboxLabel = document.createElement("label");
       checkboxLabel.classList.add("checkbox-label");
@@ -301,9 +294,9 @@ console.log(distractionContainer);
 
       checkboxLabel.appendChild(checkbox);
       checkboxLabel.appendChild(checkboxText);
-      checkboxContainer.appendChild(checkboxLabel);
+      indCheckboxContainer.appendChild(checkboxLabel);
 
-      distractionContainer.appendChild(checkboxContainer);
+      checkboxContainer.appendChild(indCheckboxContainer);
     });
     return distractionContainer;
   } catch (error) {
@@ -331,7 +324,7 @@ function createAddNewButton(
   const addButton = document.createElement("button");
   addButton.classList.add("btn", "btn-warning", "btn-sm");
   addButton.type = "button";
-  addButton.textContent = "Lägg till nytt";
+  addButton.textContent = "Lägg till ett nytt alternativ";
 
   addButton.addEventListener("click", () => {
     showAddNewInput(db, category, categoryDropdown, categoryContainer);
@@ -686,6 +679,9 @@ function populateModal(session) {
       categoryLabel.textContent = beautifyLabel(category);
       const ul = document.createElement("ul");
       ul.className = `${category}-ul`;
+      if (category.includes('notes')) {
+        ul.id="notes-ul";
+      }
       categoryDiv.appendChild(categoryLabel);
       categoryDiv.appendChild(ul);
       
@@ -720,7 +716,6 @@ function populateModal(session) {
               nestedContentRow.push(
                 `${beautifyLabel(nestedCategory)} ${translatedValue}`
               );
-              console.log(nestedContentRow);
               li.textContent = `${nestedContentRow.join(" -- ")}`;
           ul.appendChild(li);
             }
